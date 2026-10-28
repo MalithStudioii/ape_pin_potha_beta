@@ -274,7 +274,7 @@ export const StorageService = {
    */
   async getAllCommunityMembers(forceRefresh = false) {
     const now = Date.now();
-    if (!forceRefresh && this._cachedCommunityMembers && (now - this._lastCommunityMembersFetchTime < 45000)) {
+    if (!forceRefresh && this._cachedCommunityMembers && (now - this._lastCommunityMembersFetchTime < 20000)) {
       return this._cachedCommunityMembers;
     }
 
@@ -298,7 +298,7 @@ export const StorageService = {
             this._knownSanghaUids.add(docSnap.id);
           }
           const lastActive = data.lastActiveAt || data.updatedAt || 0;
-          const isOnline = (this.currentUser && this.currentUser.uid === docSnap.id) || ((now - lastActive) < 15 * 60 * 1000);
+          const isOnline = (this.currentUser && this.currentUser.uid === docSnap.id) || ((now - lastActive) < 7 * 60 * 1000);
           members.push({
             uid: docSnap.id,
             name: data.name || data.firstName || 'කල්‍යාණ මිත්‍ර',
@@ -336,7 +336,7 @@ export const StorageService = {
             joinedDate: '2026',
             updatedAt: p.timestamp || 0,
             lastActiveAt: isSelf ? now : (p.timestamp || (now - 3600000)),
-            isOnline: isSelf || ((now - (p.timestamp || 0)) < 24 * 3600 * 1000),
+            isOnline: isSelf || ((now - (p.timestamp || 0)) < 7 * 60 * 1000),
             isAdmin: false,
             isSangha: p.isSangha || p.authorRole === 'sangha' || this.isSangha({ name: p.author }),
             role: (p.isSangha || p.authorRole === 'sangha') ? 'sangha' : 'member',
@@ -386,13 +386,26 @@ export const StorageService = {
   /**
    * Keep user presence updated in Firestore & local state
    */
-  async updateUserPresence() {
+  _lastPresenceWriteTime: 0,
+
+  /**
+   * Keep user presence updated in Firestore & local state (Live Real-Time Heartbeat)
+   */
+  async updateUserPresence(force = false) {
     if (!this.currentUser || !this.currentUser.uid) return;
     const now = Date.now();
     this.currentUser.lastActiveAt = now;
     try {
       localStorage.setItem('pinPotha_last_presence', now.toString());
+      localStorage.setItem('pinPotha_currentUser', JSON.stringify(this.currentUser));
     } catch (e) {}
+
+    // Throttle remote Firestore write to at most once per 60s (unless forced on startup/tab focus)
+    if (!force && (now - this._lastPresenceWriteTime < 60000)) {
+      return;
+    }
+    this._lastPresenceWriteTime = now;
+
     if (isCloudReady && db) {
       try {
         const { doc, updateDoc } = await import('https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js');

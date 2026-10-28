@@ -334,6 +334,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   setupEventListeners();
   initPWAEngine();
+  initPresenceEngine();
 
   // Initialize browser history state for mobile back button navigation
   try {
@@ -1006,6 +1007,7 @@ window.switchTab = function(tab, pushHistory = true) {
   }
 
   if (tab === 'friends') {
+    startKmpLivePolling();
     if (feedLayout) {
       feedLayout.classList.add('hidden');
       feedLayout.style.setProperty('display', 'none', 'important');
@@ -1032,6 +1034,8 @@ window.switchTab = function(tab, pushHistory = true) {
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
     return;
+  } else {
+    stopKmpLivePolling();
   }
 
   // Non-profile, non-aranya, non-friends tabs: show main feed layout, hide special containers
@@ -7203,6 +7207,73 @@ window.handleSendMithraFromDirectory = async function(targetUid, targetName) {
 };
 
 // ============================================================================
+// Real-Time User Presence & Kalyana Mithuru Pawura Live Sync Engine
+// ============================================================================
+let kmpLivePollTimer = null;
+
+function startKmpLivePolling() {
+  if (kmpLivePollTimer) clearInterval(kmpLivePollTimer);
+  kmpLivePollTimer = setInterval(async () => {
+    if (activeTab === 'friends' && !document.hidden) {
+      try {
+        await renderKmpDirectoryView(true);
+      } catch (e) {
+        console.warn('[KMP] Live poll error:', e);
+      }
+    }
+  }, 20000); // Poll every 20 seconds for live updates
+}
+
+function stopKmpLivePolling() {
+  if (kmpLivePollTimer) {
+    clearInterval(kmpLivePollTimer);
+    kmpLivePollTimer = null;
+  }
+}
+
+window.refreshKmpDirectoryLive = async function(e) {
+  if (e && e.stopPropagation) e.stopPropagation();
+  triggerHaptic(15);
+  const dot = document.getElementById('kmpLivePulseDot');
+  if (dot) dot.style.animation = 'spin 0.6s linear infinite';
+  try {
+    await StorageService.updateUserPresence(true);
+    await renderKmpDirectoryView(true);
+  } finally {
+    if (dot) dot.style.animation = '';
+  }
+};
+
+function initPresenceEngine() {
+  // Update presence immediately on start
+  StorageService.updateUserPresence(true);
+
+  // Background heartbeat every 60s
+  setInterval(() => {
+    if (!document.hidden) {
+      StorageService.updateUserPresence();
+    }
+  }, 60000);
+
+  // Handle visibility transitions
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      StorageService.updateUserPresence(true);
+      if (activeTab === 'friends') {
+        renderKmpDirectoryView(true);
+      }
+    }
+  });
+
+  // Track user actions (throttled to 60s inside StorageService)
+  ['click', 'touchstart', 'keydown'].forEach(evt => {
+    window.addEventListener(evt, () => {
+      StorageService.updateUserPresence();
+    }, { passive: true });
+  });
+}
+
+// ============================================================================
 // Kalyana Mithuru Pawura (Direct Directory Page) Controller
 // ============================================================================
 window.openFriendsView = function(segment) {
@@ -7314,13 +7385,16 @@ window.renderKmpDirectoryView = async function(forceRefresh = false) {
     StorageService.updateUserPresence();
   } catch (e) {}
 
-  if (forceRefresh || kmpMembersCache.length === 0) {
+  if (kmpMembersCache.length === 0) {
     container.innerHTML = `
       <div style="grid-column: 1 / -1; text-align: center; padding: 48px 20px; color: #78350f;">
         <i class="fa-solid fa-spinner fa-spin" style="font-size: 2.2rem; color: #d97706; margin-bottom: 12px;"></i>
         <p style="font-size: 0.92rem; font-weight: 700;">කල්‍යාණ මිතුරු පවුර සූදානම් වෙමින් පවතී...</p>
       </div>
     `;
+  }
+
+  if (forceRefresh || kmpMembersCache.length === 0) {
     kmpMembersCache = await StorageService.getAllCommunityMembers(forceRefresh);
   }
 
@@ -8768,7 +8842,7 @@ function initPWAEngine() {
   const isIos = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase()) && !window.MSStream;
 
   // Purge any stale caches from previous builds
-  const ACTIVE_BUILD = 'v106';
+  const ACTIVE_BUILD = 'v107';
   if (localStorage.getItem('pinPotha_active_build') !== ACTIVE_BUILD) {
     localStorage.setItem('pinPotha_active_build', ACTIVE_BUILD);
     if ('caches' in window) {
@@ -8785,7 +8859,7 @@ function initPWAEngine() {
   // Register Service Worker
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js?v=106', { updateViaCache: 'none' })
+      navigator.serviceWorker.register('./sw.js?v=107', { updateViaCache: 'none' })
         .then((registration) => {
           // Immediately check for service worker updates
           try { registration.update(); } catch (e) {}

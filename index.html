@@ -51,12 +51,12 @@
     <link rel="apple-touch-icon" href="assets/icon-192.png">
 
     <!-- Core Pure CSS Design System -->
-    <link rel="stylesheet" href="css/styles.css?v=106">
+    <link rel="stylesheet" href="css/styles.css?v=107">
 
     <!-- Immediate Service Worker & Cache Invalidation Script -->
     <script>
       (function() {
-        var v = 'v106';
+        var v = 'v107';
         if (localStorage.getItem('pinPotha_active_build') !== v) {
           localStorage.setItem('pinPotha_active_build', v);
           if ('caches' in window) {
@@ -970,10 +970,11 @@
 
                 <!-- Real-time Live Online & Summary Statistics Bar -->
                 <div class="kmp-stats-row">
-                    <div class="kmp-live-pill" id="kmpLiveOnlinePill" title="දැන් සජීවීව පද්ධතිය තුළ රැඳී සිටින සාමාජිකයින් ගණන">
-                        <span class="kmp-live-pulse-dot"></span>
+                    <div class="kmp-live-pill" id="kmpLiveOnlinePill" onclick="refreshKmpDirectoryLive(event)" title="දැන් සජීවීව පද්ධතිය තුළ රැඳී සිටින සාමාජිකයින් ගණන (Click කර Live යාවත්කාලීන කරන්න)">
+                        <span class="kmp-live-pulse-dot" id="kmpLivePulseDot"></span>
                         <span class="kmp-live-label">සජීවීව Online:</span>
                         <strong id="kmpLiveOnlineCount">...</strong>
+                        <i class="fa-solid fa-rotate" style="font-size: 0.72rem; margin-left: 4px; opacity: 0.8;" title="සජීවීව යාවත්කාලීන කරන්න"></i>
                     </div>
                     <div class="kmp-stat-pill" title="පිං පොතෙහි ලියාපදිංචි සමස්ත සාමාජිකයින්">
                         <i class="fa-solid fa-users" style="color: #fef08a;"></i>
@@ -3040,6 +3041,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <!-- Application ES Modules -->
-    <script type="module" src="js/app.js?v=106"></script>
+    <script type="module" src="js/app.js?v=107"></script>
 </body>
 </html>

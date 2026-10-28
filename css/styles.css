@@ -9401,6 +9401,18 @@ body.drawer-open {
   align-items: center;
   gap: 8px;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease;
+  user-select: none;
+}
+
+.kmp-live-pill:hover {
+  background: rgba(16, 185, 129, 0.38);
+  transform: translateY(-1px);
+}
+
+.kmp-live-pill:active {
+  transform: scale(0.97);
 }
 
 .kmp-live-pulse-dot {
