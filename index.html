@@ -51,12 +51,12 @@
     <link rel="apple-touch-icon" href="assets/icon-192.png">
 
     <!-- Core Pure CSS Design System -->
-    <link rel="stylesheet" href="css/styles.css?v=109">
+    <link rel="stylesheet" href="css/styles.css?v=110">
 
     <!-- Immediate Service Worker & Cache Invalidation Script -->
     <script>
       (function() {
-        var v = 'v109';
+        var v = 'v110';
         if (localStorage.getItem('pinPotha_active_build') !== v) {
           localStorage.setItem('pinPotha_active_build', v);
           if ('caches' in window) {
@@ -245,8 +245,8 @@
                     <button onclick="switchTab('profile')" class="category-item" style="margin-top: 14px; background: #fffbeb; border: 1px solid #fef3c7; justify-content: center; font-weight: 700; color: #b45309;">
                         <i class="fa-solid fa-circle-user" style="color: #d97706; margin-right: 6px;"></i> මගේ ප්‍රොෆයිලය බලන්න
                     </button>
-                    <button onclick="openSettingsModal('profile')" class="category-item" style="margin-top: 6px; background: transparent; border: 1px dashed rgba(217, 119, 6, 0.35); justify-content: center; font-weight: 600; color: #78350f; font-size: 0.76rem;">
-                        <i class="fa-solid fa-gear" style="color: #b45309; margin-right: 6px;"></i> සැකසුම් & ප්‍රතිපත්ති
+                    <button onclick="switchTab('policies')" class="category-item" style="margin-top: 6px; background: #fffdf8; border: 1px solid #fde68a; justify-content: center; font-weight: 700; color: #92400e; font-size: 0.76rem;">
+                        <i class="fa-solid fa-shield-halved" style="color: #d97706; margin-right: 6px;"></i> ප්‍රතිපත්ති & පිං පොත ගැන
                     </button>
                 </div>
             </div>
@@ -291,9 +291,9 @@
 
             <!-- Privacy & Terms Footer Links in Sidebar -->
             <div style="padding: 10px 14px; text-align: center; font-size: 0.72rem; color: #94a3b8; line-height: 1.6;">
-                <a href="javascript:void(0)" onclick="openSettingsModal('privacy')" style="color: #78350f; text-decoration: none; font-weight: 600;">රහස්‍යතා ප්‍රතිපත්තිය</a> • 
-                <a href="javascript:void(0)" onclick="openSettingsModal('terms')" style="color: #78350f; text-decoration: none; font-weight: 600;">භාවිත කොන්දේසි</a> • 
-                <a href="javascript:void(0)" onclick="openSettingsModal('about')" style="color: #78350f; text-decoration: none; font-weight: 600;">පිං පොත ගැන</a>
+                <a href="javascript:void(0)" onclick="switchTab('policies', true, 'privacy')" style="color: #78350f; text-decoration: none; font-weight: 600;">රහස්‍යතා ප්‍රතිපත්තිය</a> • 
+                <a href="javascript:void(0)" onclick="switchTab('policies', true, 'terms')" style="color: #78350f; text-decoration: none; font-weight: 600;">භාවිත කොන්දේසි</a> • 
+                <a href="javascript:void(0)" onclick="switchTab('policies', true, 'about')" style="color: #78350f; text-decoration: none; font-weight: 600;">පිං පොත ගැන</a>
                 <div style="margin-top: 5px; font-size: 0.68rem; color: #64748b;">© 2026 පිං පොත • A Digital Initiative by <strong style="color: #0284c7; font-weight: 700;">NexiaProLanka</strong></div>
             </div>
 
@@ -1101,6 +1101,319 @@
                     <i class="fa-solid fa-rotate-left"></i> සියලු සාමාජිකයින් පෙන්වන්න
                 </button>
             </div>
+        </div>
+    </div>
+
+
+    <!-- ================= POLICIES & ABOUT APE PIN POTHA VIEW ================= -->
+    <div id="policiesPageContainer" class="policies-page-container hidden" style="display: none;">
+        <div class="policies-page-content">
+            <!-- Hero Banner Card -->
+            <div class="policies-hero-card">
+                <div class="policies-hero-top">
+                    <div class="policies-hero-badge">
+                        <i class="fa-solid fa-dharmachakra"></i>
+                        <span>කල්‍යාණ මිත්‍ර පුණ්‍ය ජාලය</span>
+                    </div>
+                    <button type="button" class="policies-back-btn" onclick="switchTab('feed')" title="ආපසු මුල් පිටුවට">
+                        <i class="fa-solid fa-arrow-left"></i> මුල් පිටුවට
+                    </button>
+                </div>
+                <h1 class="policies-hero-title">පිං පොත ගැන & ප්‍රතිපත්ති</h1>
+                <p class="policies-hero-desc">
+                    100% බෞද්ධ, දේශපාලනයෙන් සහ වාණිජ වෙළෙඳ දැන්වීම් වලින් තොරව සිත පහදවාගත හැකි නිර්මල ඩිජිටල් පුණ්‍ය භූමිය.
+                </p>
+
+                <!-- Navigation Tabs Bar -->
+                <div class="policies-nav-tabs">
+                    <button type="button" class="policies-nav-btn active" id="pol-tab-about" onclick="switchPoliciesSubTab('about')">
+                        <i class="fa-solid fa-circle-info"></i>
+                        <span>පිං පොත ගැන</span>
+                    </button>
+                    <button type="button" class="policies-nav-btn" id="pol-tab-privacy" onclick="switchPoliciesSubTab('privacy')">
+                        <i class="fa-solid fa-shield-halved"></i>
+                        <span>රහස්‍යතා ප්‍රතිපත්තිය</span>
+                    </button>
+                    <button type="button" class="policies-nav-btn" id="pol-tab-terms" onclick="switchPoliciesSubTab('terms')">
+                        <i class="fa-solid fa-file-contract"></i>
+                        <span>භාවිත කොන්දේසි</span>
+                    </button>
+                    <button type="button" class="policies-nav-btn" id="pol-tab-settings" onclick="switchPoliciesSubTab('settings')">
+                        <i class="fa-solid fa-gear"></i>
+                        <span>සැකසුම් & ගිණුම</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- ================= TAB 1: About Pin Potha (හැඳින්වීම & අරමුණ) ================= -->
+            <div id="policiesContentAbout" class="policies-tab-content">
+                <!-- Sacred Dhammapada Quote Card -->
+                <div class="policy-card-highlight">
+                    <p class="policy-quote-text">
+                        "සබ්බපාපස්ස අකරණං - කුසලස්ස උපසම්පදා<br>
+                        සචිත්තපරියෝදපනං - ඒතං බුද්ධාන සාසනං"
+                    </p>
+                    <p class="policy-quote-sub">
+                        සියලු පාපයන්ගෙන් වැළකීමත්, කුසල් උපදවා ගැනීමත්, තම සිත පිරිසිදු කරගැනීමත් බුදුවරුන්ගේ අනුශාසනාවයි. 🙏
+                    </p>
+                </div>
+
+                <!-- Mission Narrative Block -->
+                <div class="policy-detail-block">
+                    <h3 class="policy-detail-title">
+                        <i class="fa-solid fa-heart" style="color: #d97706;"></i> අපේ පිං පොත බිහිවූ උතුම් අරමුණ
+                    </h3>
+                    <p class="policy-detail-text">
+                        ෆේස්බුක්, යූටියුබ් හෝ වෙනත් සමාජ මාධ්‍ය කොතෙකුත් තිබුණද, ඒවා 100%ක් බෞද්ධයන්ගේ ආධ්‍යාත්මික සුවය උදෙසා වෙන්වූ ඒවා නොවේ. අපි කොතරම් ධාර්මික අරමුණකින් ගියද, බොහෝවිට ඇස ගැටෙන්නේ රාගය, ද්වේෂය, මෝහය වඩවන අනවශ්‍ය දෑ, දේශපාලනික අරගල, මතභේද සහ වෙළෙඳ දැන්වීම් පමණි. කොතෙක් හොඳ ධර්ම සමූහ තිබුණද, ඒවාට කඩාකප්පල්කාරී අය පැමිණ සිතුවිලි අවුල් කරන අවස්ථා බහුලයි.
+                    </p>
+                    <p class="policy-detail-text" style="margin-top: 8px;">
+                        <strong>"අපේ පිං පොත"</strong> නිර්මාණය වූයේ ඒ ගැටලුවට සැබෑ විසඳුමක් වශයෙනි. තමන් දිනපතා සිදුකරන පින් දහම් අන් අයටත් සාදු සිතින් අනුමෝදන් කරවීමටත්, අන් අය කරන පින් තමන්ටත් ශ්‍රද්ධාවෙන් හා මුදිතාවෙන් අනුමෝදන් කරගැනීමටත්, එකිනෙකාට උදව් උපකාර කරගනිමින් නිවන් මඟට පාර පෙන්වන කල්‍යාණ මිතුරන් ඇසුරු කිරීමටත් මෙය පිරිසිදු ඩිජිටල් පින්බිමකි.
+                    </p>
+                </div>
+
+                <!-- 6 Core Feature Cards -->
+                <h4 style="font-size: 0.96rem; font-weight: 700; color: #451a03; margin: 20px 0 10px;">අපගේ සුවිශේෂී මූලධර්ම හා පහසුකම්</h4>
+                <div class="policy-features-grid">
+                    <div class="policy-feat-box">
+                        <div class="policy-feat-head">
+                            <div class="policy-feat-icon" style="background: #fef2f2; color: #dc2626;"><i class="fa-solid fa-ban"></i></div>
+                            <h5 class="policy-feat-title">100% දේශපාලනයෙන් තොරයි</h5>
+                        </div>
+                        <p class="policy-feat-desc">කිසිදු පක්ෂ දේශපාලනයක්, විවේචන හෝ වාද විවාද සඳහා මෙහි ඉඩක් නොමැත. ඇත්තේ ධර්මය සහ කුසලය පමණි.</p>
+                    </div>
+
+                    <div class="policy-feat-box">
+                        <div class="policy-feat-head">
+                            <div class="policy-feat-icon" style="background: #fef2f2; color: #dc2626;"><i class="fa-solid fa-rectangle-ad"></i></div>
+                            <h5 class="policy-feat-title">වෙළෙඳ දැන්වීම් නැත (No Ads)</h5>
+                        </div>
+                        <p class="policy-feat-desc">මුදල් ඉපැයීමේ කිසිදු වාණිජ දැන්වීමක් නොමැත. සිතට බාධාවකින් තොරව ධර්මයෙහි හැසිරිය හැක.</p>
+                    </div>
+
+                    <div class="policy-feat-box">
+                        <div class="policy-feat-head">
+                            <div class="policy-feat-icon" style="background: #ecfdf5; color: #059669;"><i class="fa-solid fa-lock"></i></div>
+                            <h5 class="policy-feat-title">පෞද්ගලික පිං පොත</h5>
+                        </div>
+                        <p class="policy-feat-desc">අනුන්ට නොපෙන්වා තමන්ට පමණක් බලාගත හැකි රහසිගත පින්කම්, භාවනා අත්දැකීම් ආරක්ෂිතව සටහන් කරගත හැක.</p>
+                    </div>
+
+                    <div class="policy-feat-box">
+                        <div class="policy-feat-head">
+                            <div class="policy-feat-icon" style="background: #f0fdf4; color: #16a34a;"><i class="fa-solid fa-mountain-sun"></i></div>
+                            <h5 class="policy-feat-title">ආරණ්‍ය සේනාසන නාමාවලිය</h5>
+                        </div>
+                        <p class="policy-feat-desc">දිවයින පුරා දුෂ්කර ආරණ්‍ය සේනාසන සොයාගෙන දානමාන ආදී පින්කම් සිදුකිරීමට පූර්ණ තොරතුරු හා මඟපෙන්වීම්.</p>
+                    </div>
+
+                    <div class="policy-feat-box">
+                        <div class="policy-feat-head">
+                            <div class="policy-feat-icon" style="background: #eff6ff; color: #2563eb;"><i class="fa-solid fa-user-group"></i></div>
+                            <h5 class="policy-feat-title">කල්‍යාණ මිතුරු පවුර</h5>
+                        </div>
+                        <p class="policy-feat-desc">සම්බුදු සසුන බැබළවීමට හා කුසල් දහම් දියුණු කිරීමට එක්වූ පින්වත් සංඝරත්නය සහ සැබෑ කල්‍යාණ මිතුරන් සොයා සම්බන්ධ වීම.</p>
+                    </div>
+
+                    <div class="policy-feat-box">
+                        <div class="policy-feat-head">
+                            <div class="policy-feat-icon" style="background: #fdf4ff; color: #a855f7;"><i class="fa-solid fa-hand-holding-heart"></i></div>
+                            <h5 class="policy-feat-title">සත්කාර හවුල</h5>
+                        </div>
+                        <p class="policy-feat-desc">විහාරස්ථාන, දුෂ්කර පාසල් සහ සමාජ සත්කාර සඳහා විනිවිදභාවයෙන් සහ අවංකත්වයෙන් යුතු සජීවී ආධාර ජාලය.</p>
+                    </div>
+                </div>
+
+                <!-- NexiaProLanka Creator Card -->
+                <div style="background: linear-gradient(135deg, rgba(240, 249, 255, 0.95), rgba(240, 253, 250, 0.95)); border: 1.5px solid rgba(14, 165, 233, 0.25); border-radius: 14px; padding: 14px 18px; margin-top: 16px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+                    <img src="assets/nexiapro-logo.png" alt="NexiaProLanka Logo" style="width: 54px; height: 54px; object-fit: contain; border-radius: 10px; background: #ffffff; padding: 4px; border: 1px solid rgba(14, 165, 233, 0.2); box-shadow: 0 2px 8px rgba(0,0,0,0.06); flex-shrink: 0;">
+                    <div style="flex: 1; min-width: 220px;">
+                        <div style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: #0284c7; background: rgba(2, 132, 199, 0.1); padding: 2px 8px; border-radius: 12px; margin-bottom: 3px;">
+                            <i class="fa-solid fa-code"></i> Technology & Innovation
+                        </div>
+                        <h4 style="margin: 0 0 2px; font-size: 1rem; font-weight: 800; background: linear-gradient(135deg, #0284c7, #059669); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">NexiaProLanka</h4>
+                        <p style="margin: 0; font-size: 0.74rem; color: #64748b; line-height: 1.4;">
+                            සංකල්පය, සැලසුම්කරණය සහ තාක්ෂණික දායකත්වය • Digital Initiative • Version 2.0.5 (Beta)
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================= TAB 2: Privacy Policy (රහස්‍යතා ප්‍රතිපත්තිය) ================= -->
+            <div id="policiesContentPrivacy" class="policies-tab-content hidden" style="display: none;">
+                <div class="policy-card-highlight" style="background: linear-gradient(135deg, #ecfdf5, #f0fdf4); border-color: #a7f3d0;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <i class="fa-solid fa-shield-halved" style="font-size: 1.6rem; color: #059669;"></i>
+                        <div>
+                            <h3 style="margin: 0; font-size: 1.05rem; color: #065f46; font-weight: 700;">පිං පොත රහස්‍යතා ප්‍රතිපත්තිය (Privacy Policy)</h3>
+                            <span style="font-size: 0.72rem; color: #047857;">අවසන් යාවත්කාලීන කිරීම: 2026 ඔක්තෝබර්</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="policy-detail-block">
+                    <h4 class="policy-detail-title">
+                        <i class="fa-solid fa-lock" style="color: #059669;"></i> 1. පෞද්ගලික කුසල් සටහන් වල රහස්‍යභාවය (Private Merits Isolation)
+                    </h4>
+                    <p class="policy-detail-text">
+                        ඔබ විසින් "පෞද්ගලික (Private)" ලෙස සලකුණු කර සටහන් කරන සියලුම පින්කම්, භාවනා අත්දැකීම් සහ කුසල් සටහන් ඔබට හැර ලෝකයේ වෙනත් කිසිදු පරිශීලකයෙකුට, පරිපාලකයෙකුට හෝ සෙවුම් යන්ත්‍ර වලට (Google / Search Engines) නොපෙනේ. ඒවා ඔබගේ පුද්ගලික පරිහරණය සඳහා පමණක් අතිශය සුරක්ෂිතව තැන්පත් වේ.
+                    </p>
+                </div>
+
+                <div class="policy-detail-block">
+                    <h4 class="policy-detail-title">
+                        <i class="fa-solid fa-user-shield" style="color: #059669;"></i> 2. ගිණුම් තොරතුරු සුරක්ෂිතතාව (Account & Identity Security)
+                    </h4>
+                    <p class="policy-detail-text">
+                        ඔබගේ ගිණුමට ප්‍රවේශ වීම Google Sign-In (OAuth 2.0) හරහා සිදුවේ. ඔබගේ රහස්පද (Passwords) අපගේ පද්ධතිය තුළ කිසිසේත්ම ගබඩා නොවන අතර, Google Identity Security උසස් තාක්ෂණික ප්‍රමිතීන්ට අනුව ඔබේ ගිණුම ආරක්ෂා වේ.
+                    </p>
+                </div>
+
+                <div class="policy-detail-block">
+                    <h4 class="policy-detail-title">
+                        <i class="fa-solid fa-hand-holding-dollar" style="color: #059669;"></i> 3. දත්ත අලෙවි නොකිරීමේ ප්‍රතිපත්තිය (Zero Data Selling)
+                    </h4>
+                    <p class="policy-detail-text">
+                        "පිං පොත" යනු කිසිදු වාණිජ හෝ ලාභ ඉපැයීමේ අරමුණකින් තොරව බිහිවූ පිරිසිදු පුණ්‍ය සේවාවකි. ඔබගේ පුද්ගලික තොරතුරු, දුරකථන අංක හෝ ඊමේල් ලිපින කිසිදු තෙවන පාර්ශ්වයකට අලෙවි කිරීමක් හෝ වෙළෙඳ දැන්වීම් සඳහා ලබාදීමක් සිදු නොකෙරේ.
+                    </p>
+                </div>
+
+                <div class="policy-detail-block">
+                    <h4 class="policy-detail-title">
+                        <i class="fa-solid fa-trash-can" style="color: #059669;"></i> 4. දත්ත සහ ඡායාරූප ඉවත් කිරීමේ පූර්ණ අයිතිය (Right to Delete)
+                    </h4>
+                    <p class="policy-detail-text">
+                        ඔබ විසින් පළ කරන ලද ඕනෑම පින්කමක්, ඡායාරූපයක් හෝ ඔබේ සමස්ත ගිණුම ඕනෑම මොහොතක පද්ධතියෙන් සම්පූර්ණයෙන්ම මකා දැමීමට (Delete) ඔබට පූර්ණ නිදහස සහ අයිතිය ඇත.
+                    </p>
+                </div>
+
+                <div class="policy-detail-block">
+                    <h4 class="policy-detail-title">
+                        <i class="fa-solid fa-database" style="color: #059669;"></i> 5. බ්‍රවුසර් මතකය (Cache & Local Storage)
+                    </h4>
+                    <p class="policy-detail-text">
+                        ඔබට අන්තර්ජාලය දුර්වල අවස්ථාවකදී වුවද ක්ෂණිකව (<10ms) පද්ධතිය පෙන්වීම සඳහා පමණක් බ්‍රවුසරයේ Cache සහ Local Storage භාවිත කෙරේ. එහි කිසිදු අහිතකර කුකීස් හෝ ට්‍රැකින්ග් මෙවලම් ක්‍රියාත්මක නොවේ.
+                    </p>
+                </div>
+            </div>
+
+            <!-- ================= TAB 3: Terms & Guidelines (පද්ධති කොන්දේසි) ================= -->
+            <div id="policiesContentTerms" class="policies-tab-content hidden" style="display: none;">
+                <div class="policy-card-highlight" style="background: linear-gradient(135deg, #fffbeb, #fef3c7); border-color: #fde68a;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <i class="fa-solid fa-file-contract" style="font-size: 1.6rem; color: #d97706;"></i>
+                        <div>
+                            <h3 style="margin: 0; font-size: 1.05rem; color: #78350f; font-weight: 700;">භාවිතයේ කොන්දේසි (Terms & Guidelines)</h3>
+                            <span style="font-size: 0.72rem; color: #92400e;">කල්‍යාණ මිත්‍ර ශික්ෂණය සහ ප්‍රජා නීතිරීති</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="policy-detail-block">
+                    <h4 class="policy-detail-title">
+                        <i class="fa-solid fa-hands-praying" style="color: #d97706;"></i> 1. කල්‍යාණ මිත්‍ර ශික්ෂණය (Noble Conduct)
+                    </h4>
+                    <p class="policy-detail-text">
+                        මෙම වේදිකාව තුළ පළ කරනු ලබන සියලුම පින්කම් සටහන්, ඡායාරූප, සාදුකාර සහ පුණ්‍යානුමෝදනා (Comments) ශාන්ත, ධාර්මික සහ එකිනෙකාට ගෞරව කරන සුහදශීලී අයුරින් පමණක් සිදු කළ යුතුය.
+                    </p>
+                </div>
+
+                <div class="policy-detail-block">
+                    <h4 class="policy-detail-title">
+                        <i class="fa-solid fa-circle-exclamation" style="color: #dc2626;"></i> 2. නුසුදුසු අන්තර්ගතයන් සම්පූර්ණයෙන්ම තහනම්ය (Prohibited Content)
+                    </h4>
+                    <p class="policy-detail-text">
+                        පහත සඳහන් කිසිදු අන්තර්ගතයක් පළ කිරීමට අවසර නොලැබේ:<br>
+                        • දේශපාලනික වාද විවාද, පක්ෂග්‍රාහී ප්‍රකාශ හෝ පක්ෂ දේශපාලනය.<br>
+                        • වෛරී ප්‍රකාශන (Hate Speech) හෝ ආගමික මතගැටුම් ඇවිස්සීම.<br>
+                        • වාණිජමය වෙළෙඳ දැන්වීම්, භාණ්ඩ අලෙවිය හෝ මුදල් ඉපැයීමේ දැන්වීම්.<br>
+                        • අසත්‍ය තොරතුරු, වංචනික ක්‍රියා හෝ අනුන්ට අපහාස වන දෑ.<br>
+                        එවැනි ඕනෑම සටහනක් පද්ධතිය විසින් ක්ෂණිකව ඉවත් කරනු ලැබේ.
+                    </p>
+                </div>
+
+                <div class="policy-detail-block">
+                    <h4 class="policy-detail-title">
+                        <i class="fa-solid fa-hand-holding-heart" style="color: #d97706;"></i> 3. සත්කාර හවුලේ විනිවිදභාවය (Charity Guidelines)
+                    </h4>
+                    <p class="policy-detail-text">
+                        සත්කාර හවුල හරහා විහාරස්ථාන හෝ සමාජ සත්කාර සඳහා අවශ්‍යතා පළ කිරීමේදී සත්‍ය තොරතුරු සහ නිවැරදි සබඳතා තොරතුරු පමණක් ඇතුළත් කළ යුතුය. කිසිදු මුදල් වංචාවකට හෝ අතරමැදි මුදල් එකතු කිරීමකට ඉඩ නොදෙන අතර සියලු පාර්ශ්වයන් විමසිලිමත්ව කටයුතු කළ යුතුය.
+                    </p>
+                </div>
+
+                <div class="policy-detail-block">
+                    <h4 class="policy-detail-title">
+                        <i class="fa-solid fa-gavel" style="color: #d97706;"></i> 4. පරිපාලන අයිතිය (Moderation & Disciplinary Actions)
+                    </h4>
+                    <p class="policy-detail-text">
+                        පද්ධතියේ පාරිශුද්ධත්වය රැකගැනීම උදෙසා, කොන්දේසි කඩකරන ඕනෑම සටහනක් ඉවත් කිරීමට සහ අදාළ පරිශීලක ගිණුම ස්ථිරව හෝ තාවකාලිකව අත්හිටුවීමට (Suspend / Ban) පරිපාලනයට පූර්ණ බලය ඇත.
+                    </p>
+                </div>
+            </div>
+
+            <!-- ================= TAB 4: Settings & Account (සැකසුම් සහ ගිණුම) ================= -->
+            <div id="policiesContentSettings" class="policies-tab-content hidden" style="display: none;">
+                <!-- Account Summary Card -->
+                <div style="background: linear-gradient(135deg, #fffbeb, #fef3c7); border: 1.5px solid #fde68a; border-radius: 14px; padding: 18px 20px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
+                    <div style="display: flex; align-items: center; gap: 14px;">
+                        <div style="width: 52px; height: 52px; border-radius: 50%; background: #ffffff; border: 2px solid #d97706; display: flex; align-items: center; justify-content: center; color: #d97706; font-size: 1.5rem; box-shadow: 0 4px 10px rgba(217, 119, 6, 0.15);">
+                            <i class="fa-solid fa-user"></i>
+                        </div>
+                        <div>
+                            <h4 id="policiesUserName" style="margin: 0 0 3px; font-size: 1.05rem; font-weight: 700; color: #451a03;">පින්වත් කල්‍යාණ මිත්‍රයෙක්</h4>
+                            <p id="policiesUserEmail" style="margin: 0; font-size: 0.78rem; color: #78350f;">ගිණුම සක්‍රීයයි</p>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-profile-primary" onclick="openSettingsModal('profile')" style="padding: 9px 20px; font-size: 0.84rem;">
+                        <i class="fa-solid fa-user-pen"></i> ප්‍රොෆයිලය සංස්කරණය
+                    </button>
+                </div>
+
+                <!-- Sound Preferences -->
+                <div class="policy-detail-block">
+                    <h4 class="policy-detail-title">
+                        <i class="fa-solid fa-volume-high" style="color: #d97706;"></i> ශබ්ද තරංග හා කම්පන (Sounds & Vibrations)
+                    </h4>
+                    <p class="policy-detail-text" style="margin-bottom: 10px;">
+                        සාදුකාර දීමේදී, සටහන් පළ කිරීමේදී සහ බෙදාගැනීමේදී (Share) ශ්‍රව්‍ය ශබ්ද සහ Vibration සක්‍රීය හෝ අක්‍රීය කරන්න.
+                    </p>
+                    <label style="display: inline-flex; align-items: center; gap: 10px; background: #fffdf8; border: 1.5px solid #fde68a; padding: 10px 16px; border-radius: 10px; cursor: pointer; font-size: 0.86rem; font-weight: 600; color: #78350f;">
+                        <input type="checkbox" id="chkPoliciesSoundEffects" checked onchange="togglePoliciesSound(event)" style="width: 18px; height: 18px; accent-color: #d97706;">
+                        <span>සාදුකාර හා පද්ධති ශබ්ද සක්‍රීයයි</span>
+                    </label>
+                </div>
+
+                <!-- Restore Deleted Posts -->
+                <div class="policy-detail-block">
+                    <h4 class="policy-detail-title">
+                        <i class="fa-solid fa-arrows-rotate" style="color: #d97706;"></i> දත්ත සමමුහුර්තකරණය (Sync & Cache)
+                    </h4>
+                    <p class="policy-detail-text" style="margin-bottom: 10px;">
+                        ඔබ මීට පෙර මෙම දුරකථනයෙන් හෝ බ්‍රවුසරයෙන් මකා දැමූ (Hide කළ) සටහන් නැවත ගෙන්වා ගැනීමට අවශ්‍ය නම්:
+                    </p>
+                    <button type="button" class="btn-profile-secondary" onclick="resetHiddenPostsCache()" style="font-size: 0.82rem; padding: 8px 16px; border-radius: 8px; font-weight: 700;">
+                        <i class="fa-solid fa-rotate-left"></i> සැඟවුණු සටහන් නැවත පෙන්වන්න (Restore Hidden)
+                    </button>
+                </div>
+
+                <!-- Support & Feedback -->
+                <div class="policy-detail-block">
+                    <h4 class="policy-detail-title">
+                        <i class="fa-solid fa-comments" style="color: #059669;"></i> සහය සහ ප්‍රතිචාර (Support & Feedback)
+                    </h4>
+                    <p class="policy-detail-text" style="margin-bottom: 12px;">
+                        පද්ධතිය පිළිබඳ ඔබේ වටිනා අදහස්, යෝජනා හෝ ගැටලු අප වෙත යොමු කරන්න:
+                    </p>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <a href="https://wa.me/94770000000" target="_blank" class="btn-profile-secondary" style="font-size: 0.82rem; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px;">
+                            <i class="fa-brands fa-whatsapp" style="color: #25d366; font-size: 1rem;"></i> WhatsApp මඟින් සම්බන්ධ වන්න
+                        </a>
+                        <button type="button" class="btn-profile-secondary" onclick="handleLogout()" style="color: #dc2626; border-color: #fecaca; background: #fff5f5; font-size: 0.82rem; padding: 8px 16px;">
+                            <i class="fa-solid fa-right-from-bracket"></i> ගිණුමෙන් ඉවත් වන්න (Sign Out)
+                        </button>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -3005,13 +3318,13 @@
                     </button>
 
                     <!-- Settings & Policies -->
-                    <button type="button" class="drawer-list-btn" onclick="closeMobileMenuDrawer(); openSettingsModal('profile');">
-                        <div class="drawer-btn-icon" style="background: rgba(100, 116, 139, 0.12); color: #475569;">
-                            <i class="fa-solid fa-gear"></i>
+                    <button type="button" class="drawer-list-btn" onclick="closeMobileMenuDrawer(); switchTab('policies');">
+                        <div class="drawer-btn-icon" style="background: rgba(217, 119, 6, 0.12); color: #d97706;">
+                            <i class="fa-solid fa-shield-halved"></i>
                         </div>
                         <div class="drawer-btn-text">
-                            <span class="drawer-btn-title">සැකසුම් & ප්‍රතිපත්ති</span>
-                            <span class="drawer-btn-sub">ගිණුම, ශබ්ද හා පෞද්ගලිකත්වය</span>
+                            <span class="drawer-btn-title">ප්‍රතිපත්ති & පිං පොත ගැන</span>
+                            <span class="drawer-btn-sub">රහස්‍යතාව, භාවිත කොන්දේසි & අපේ අරමුණ</span>
                         </div>
                         <i class="fa-solid fa-chevron-right drawer-chevron-mini"></i>
                     </button>
@@ -3041,6 +3354,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <!-- Application ES Modules -->
-    <script type="module" src="js/app.js?v=109"></script>
+    <script type="module" src="js/app.js?v=110"></script>
 </body>
 </html>

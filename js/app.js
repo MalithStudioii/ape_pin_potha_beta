@@ -923,7 +923,7 @@ window.switchTab = function(tab, pushHistory = true) {
   document.querySelector('.app-header')?.classList.remove('header-hidden');
 
   // Update navigation buttons (both desktop & mobile)
-  ['feed', 'profile', 'mybook', 'needs', 'friends', 'aranya'].forEach(t => {
+  ['feed', 'profile', 'mybook', 'needs', 'friends', 'aranya', 'policies'].forEach(t => {
     const dBtn = document.getElementById(`desk-tab-${t}`);
     const mBtn = document.getElementById(`mob-tab-${t}`);
     if (dBtn) {
@@ -959,6 +959,44 @@ window.switchTab = function(tab, pushHistory = true) {
   const aranyaContainer = document.getElementById('aranyaPageContainer');
   const friendsContainer = document.getElementById('friendsPageContainer');
   const banner = document.getElementById('tabHeaderBanner');
+
+    if (tab === 'policies') {
+    stopKmpLivePolling();
+    if (feedLayout) {
+      feedLayout.classList.add('hidden');
+      feedLayout.style.setProperty('display', 'none', 'important');
+    }
+    if (profileContainer) {
+      profileContainer.classList.add('hidden');
+      profileContainer.style.setProperty('display', 'none', 'important');
+    }
+    if (aranyaContainer) {
+      aranyaContainer.classList.add('hidden');
+      aranyaContainer.style.setProperty('display', 'none', 'important');
+    }
+    if (friendsContainer) {
+      friendsContainer.classList.add('hidden');
+      friendsContainer.style.setProperty('display', 'none', 'important');
+    }
+    if (policiesContainer) {
+      policiesContainer.classList.remove('hidden');
+      policiesContainer.style.setProperty('display', 'block', 'important');
+    }
+    if (banner) banner.style.display = 'none';
+
+    const subTab = (arguments.length > 2 && arguments[2]) ? arguments[2] : 'about';
+    if (typeof window.switchPoliciesSubTab === 'function') {
+      window.switchPoliciesSubTab(subTab);
+    }
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return;
+  } else {
+    if (policiesContainer) {
+      policiesContainer.classList.add('hidden');
+      policiesContainer.style.setProperty('display', 'none', 'important');
+    }
+  }
 
   if (tab === 'profile') {
     if (feedLayout) {
@@ -8856,7 +8894,7 @@ function initPWAEngine() {
   const isIos = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase()) && !window.MSStream;
 
   // Purge any stale caches from previous builds
-  const ACTIVE_BUILD = 'v109';
+  const ACTIVE_BUILD = 'v110';
   if (localStorage.getItem('pinPotha_active_build') !== ACTIVE_BUILD) {
     localStorage.setItem('pinPotha_active_build', ACTIVE_BUILD);
     if ('caches' in window) {
