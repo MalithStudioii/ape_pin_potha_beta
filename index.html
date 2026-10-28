@@ -51,12 +51,12 @@
     <link rel="apple-touch-icon" href="assets/icon-192.png">
 
     <!-- Core Pure CSS Design System -->
-    <link rel="stylesheet" href="css/styles.css?v=108">
+    <link rel="stylesheet" href="css/styles.css?v=109">
 
     <!-- Immediate Service Worker & Cache Invalidation Script -->
     <script>
       (function() {
-        var v = 'v108';
+        var v = 'v109';
         if (localStorage.getItem('pinPotha_active_build') !== v) {
           localStorage.setItem('pinPotha_active_build', v);
           if ('caches' in window) {
@@ -1420,7 +1420,7 @@
                     </div>
                     <div>
                         <h3 class="modal-title" style="color: #991b1b; font-size: 1.05rem; font-weight: 800;">නව Short Reel එකක් එක් කරන්න</h3>
-                        <div style="font-size: 0.72rem; color: #b91c1c; font-weight: 500;">පුණ්‍ය දැක්ම තුළ සැමටම නැරඹිය හැකි පරිදි පළ වේ</div>
+                        <div style="font-size: 0.72rem; color: #b91c1c; font-weight: 500;">Reels තුළ සැමටම නැරඹිය හැකි පරිදි පළ වේ</div>
                     </div>
                 </div>
                 <button onclick="closeShortsModal()" class="modal-close-btn" type="button" title="වසන්න">
@@ -1458,7 +1458,7 @@
                     </div>
                     <div class="standalone-shorts-info">
                         <div class="standalone-shorts-title" id="standaloneShortsTitle">වීඩියෝව හඳුනාගැනිණි</div>
-                        <div class="standalone-shorts-hint">පුණ්‍ය දැක්ම තුළ සිරස්ව (Vertical Reel) සුමටව ධාවනය වේ</div>
+                        <div class="standalone-shorts-hint">Reels තුළ සිරස්ව (Vertical Reel) සුමටව ධාවනය වේ</div>
                     </div>
                 </div>
 
@@ -2674,9 +2674,9 @@
     </div>
 
     <!-- ========================================================================= -->
-    <!-- Fullscreen Dharma Reels / Shorts Vertical Swipe Viewer (පුණ්‍ය දැක්ම)     -->
+    <!-- Fullscreen Dharma Reels / Shorts Vertical Swipe Viewer (Reels) -->
     <!-- ========================================================================= -->
-    <div id="reelsModal" class="reels-overlay hidden" role="dialog" aria-modal="true" aria-label="පුණ්‍ය දැක්ම Shorts Viewer">
+    <div id="reelsModal" class="reels-overlay hidden" role="dialog" aria-modal="true" aria-label="Dharma Reels Viewer">
         <!-- Top Reels Header -->
         <div class="reels-header">
             <div class="reels-brand">
@@ -3041,6 +3041,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <!-- Application ES Modules -->
-    <script type="module" src="js/app.js?v=108"></script>
+    <script type="module" src="js/app.js?v=109"></script>
 </body>
 </html>

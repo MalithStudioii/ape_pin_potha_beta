@@ -259,7 +259,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 1. INSTANT ZERO-LATENCY PAINT:
   // Render immediately from localStorage so users see the feed instantaneously in <50ms!
-  currentPostsData = StorageService.getLocalPosts() || [];
+  StorageService.purgeDummyPostsFromStorage();
+  currentPostsData = (StorageService.getLocalPosts() || []).filter(p => !StorageService.isDummyTestPost || !StorageService.isDummyTestPost(p));
   window.currentPostsData = currentPostsData;
   if (currentPostsData.length > 0) {
     renderFeed();
@@ -281,9 +282,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Subscribe to real-time database updates
   StorageService.onPostsUpdate((posts) => {
+    const cleanPosts = (posts || []).filter(p => !StorageService.isDummyTestPost || !StorageService.isDummyTestPost(p));
     const prevIds = (currentPostsData || []).map(p => p.id).join(',');
-    const newIds = (posts || []).map(p => p.id).join(',');
-    currentPostsData = posts || [];
+    const newIds = cleanPosts.map(p => p.id).join(',');
+    currentPostsData = cleanPosts;
     window.currentPostsData = currentPostsData;
 
     const container = document.getElementById('postsContainer');
@@ -1788,7 +1790,7 @@ function renderPostCardHTML(post, user) {
             <h4 class="quoted-merit-title">${Security.escapeHTML(orig.title)}</h4>
             <p class="quoted-merit-desc">${Security.escapeHTML(orig.description || '')}</p>
             ${orig.videoId ? `
-              <div class="quoted-merit-video-wrap" style="position: relative; border-radius: 10px; overflow: hidden; margin-top: 8px; max-width: 340px; cursor: pointer;" onclick="event.stopPropagation(); openReelsViewer('${orig.id}')" title="පුණ්‍ය දැක්ම තුළ නරඹන්න">
+              <div class="quoted-merit-video-wrap" style="position: relative; border-radius: 10px; overflow: hidden; margin-top: 8px; max-width: 340px; cursor: pointer;" onclick="event.stopPropagation(); openReelsViewer('${orig.id}')" title="Reels තුළ නරඹන්න">
                 <img src="${Security.sanitizeUrl(orig.videoThumbnail || `https://img.youtube.com/vi/${orig.videoId}/hqdefault.jpg`)}" alt="${Security.escapeHTML(orig.title)}" loading="lazy" style="width: 100%; max-height: 200px; object-fit: cover;">
                 <div style="position: absolute; inset: 0; background: rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center;">
                   <div class="glowing-play-btn" style="width: 44px; height: 44px; font-size: 1rem;"><i class="fa-solid fa-play"></i></div>
@@ -2042,6 +2044,7 @@ function renderFeed() {
 
   const filtered = currentPostsData.filter(post => {
     if (!post) return false;
+    if (StorageService.isDummyTestPost && StorageService.isDummyTestPost(post)) return false;
 
     if (searchQ) {
       const matchTitle = (post.title || '').toLowerCase().includes(searchQ);
@@ -2268,6 +2271,7 @@ export function appendNewPostsToFeed(allPosts, prevIdsStr) {
   const newlyFetched = (allPosts || []).filter(p => !prevIdSet.has(p.id));
   const filteredNew = newlyFetched.filter(post => {
     if (!post) return false;
+    if (StorageService.isDummyTestPost && StorageService.isDummyTestPost(post)) return false;
 
     if (searchQ) {
       const matchTitle = (post.title || '').toLowerCase().includes(searchQ);
@@ -2319,7 +2323,7 @@ function renderSideNeeds() {
   const container = document.getElementById('sideNeedsList');
   if (!container) return;
 
-  const needs = currentPostsData.filter(p => p.type === 'need').slice(0, 3);
+  const needs = currentPostsData.filter(p => p.type === 'need' && (!StorageService.isDummyTestPost || !StorageService.isDummyTestPost(p))).slice(0, 3);
   if (needs.length === 0) {
     container.innerHTML = `<p style="font-size: 0.72rem; color: #94a3b8;">දැනට ඉල්ලීම් නොමැත.</p>`;
     return;
@@ -4541,10 +4545,10 @@ window.openReelsViewer = function(initialPostId = null) {
 
   // Filter all posts that have a valid videoId
   const posts = (Array.isArray(currentPostsData) && currentPostsData.length > 0) ? currentPostsData : StorageService.getLocalPosts();
-  const videoPosts = posts.filter(p => p.videoId && p.isDeleted !== true);
+  const videoPosts = posts.filter(p => p.videoId && p.isDeleted !== true && (!StorageService.isDummyTestPost || !StorageService.isDummyTestPost(p)));
 
   if (videoPosts.length === 0) {
-    alert("දැනට පුණ්‍ය දැක්මේ Shorts වීඩියෝ සටහන් නොමැත. ඔබේ ප්‍රථම ධර්ම Shorts සටහන දැන්ම එක් කරන්න!");
+    alert("දැනට Reels වීඩියෝ සටහන් නොමැත. ඔබේ ප්‍රථම ධර්ම Reels සටහන දැන්ම එක් කරන්න!");
     window.openShortsUploadModal();
     return;
   }
@@ -4936,7 +4940,7 @@ window.handleReelShare = async function(postId, btnEl) {
   const reel = (typeof currentPostsData !== 'undefined' && currentPostsData.find(p => p.id === postId)) ||
                (StorageService.getLocalPosts() || []).find(p => p.id === postId);
 
-  const shareTitle = reel?.title || 'අපේ පින් පොත - පුණ්‍ය දැක්ම';
+  const shareTitle = reel?.title || 'අපේ පින් පොත - Reels';
   const shareText = `ධර්ම කරුණක් / පින්කමක් නරඹන්න: ${reel?.title || 'දහම් Reels'}`;
   const shareUrl = `${window.location.origin}${window.location.pathname}?post=${encodeURIComponent(postId)}`;
 
@@ -8852,7 +8856,7 @@ function initPWAEngine() {
   const isIos = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase()) && !window.MSStream;
 
   // Purge any stale caches from previous builds
-  const ACTIVE_BUILD = 'v108';
+  const ACTIVE_BUILD = 'v109';
   if (localStorage.getItem('pinPotha_active_build') !== ACTIVE_BUILD) {
     localStorage.setItem('pinPotha_active_build', ACTIVE_BUILD);
     if ('caches' in window) {

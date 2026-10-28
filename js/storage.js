@@ -37,137 +37,9 @@ const DEFAULT_BANNED_WORDS = [
 ];
 
 
-// Sample seed data for Local Sandbox mode
-const SEED_POSTS = [
-  {
-    id: "post_201",
-    uid: "user_supun",
-    author: "සුපුන් පෙරේරා",
-    type: "merit",
-    visibility: "public",
-    title: "ගිලන්පස සහ ඖෂධ පූජාව",
-    category: "දානමය",
-    location: "කැලණිය රජමහා විහාරය",
-    description: "අද සවස භාග්‍යවතුන් වහන්සේ උදෙසා සුවඳ මල්, පහන් සහ ගිලන්පස පූජා කර සියලු සත්ත්වයන්ට නිදුක් නීරෝගී සුවය ප්‍රාර්ථනා කළෙමු. දැක බලා සියලු දෙනාම සතුටු සිතින් අනුමෝදන් වෙත්වා! 🙏",
-    date: "පැය 2කට පෙර",
-    timestamp: Date.now() - 7200000,
-    sadhuCount: 38,
-    image: "https://images.unsplash.com/photo-1544650039-22886fbb4323?auto=format&fit=crop&w=800&q=70",
-    images: [
-      "https://images.unsplash.com/photo-1544650039-22886fbb4323?auto=format&fit=crop&w=800&q=70",
-      "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=800&q=70",
-      "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&w=800&q=70",
-      "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=800&q=70"
-    ],
-    comments: [
-      { author: "නිමාලි සිල්වා", text: "සාදු! සාදු! සාදු! ඉතාමත් උතුම් පින්කමක් 🙏", time: "විනාඩි 45කට පෙර" },
-      { author: "කසුන් රාජපක්ෂ", text: "සියලු දෙනාටම උතුම් චතුරාර්ය සත්‍යය අවබෝධ වේවා!", time: "විනාඩි 15කට පෙර" }
-    ]
-  },
-  {
-    id: "post_202",
-    uid: "user_charity",
-    author: "කල්‍යාණ මිත්‍ර එකමුතුව",
-    type: "need",
-    visibility: "public",
-    title: "දුෂ්කර පාසලක පුස්තකාලයට පොත් අවශ්‍යයි",
-    category: "සමාජ සත්කාර",
-    location: "මොණරාගල - සියඹලාණ්ඩුව",
-    contact: "0712345678",
-    description: "සියඹලාණ්ඩුව ප්‍රදේශයේ දුෂ්කර පාසලක දරුවන් 85 දෙනෙකු සඳහා කියවීමේ පොත් සහ අභ්‍යාස පොත් ලබා දීමට සැලසුම් කර ඇත. ඔබ ළඟ ඇති පොත් ලබා දී මේ පින්කමට දායක විය හැක.",
-    date: "ඊයේ",
-    timestamp: Date.now() - 86400000,
-    sadhuCount: 22,
-    image: null,
-    comments: [
-      { author: "චතුරංග", text: "මම පොත් 25ක් ලබා දෙන්නම්. හෙට කතා කරන්නම් සහෝදරයා.", time: "පැය 5කට පෙර" }
-    ]
-  },
-  {
-    id: "post_203",
-    uid: "user_malith",
-    author: "මලිත්",
-    type: "merit",
-    visibility: "private",
-    title: "රාත්‍රී මෛත්‍රී භාවනාව (විනාඩි 30)",
-    category: "භාවනාමය",
-    location: "නිවසේදී",
-    description: "නින්දට පෙර විනාඩි 30ක් සියලු සත්ත්වයන් වෙත මෙත් සිත පතුරුවමින් භාවනා කළෙමි. සිතට මහත් සැහැල්ලුවක් දැනුණි.",
-    date: "අද",
-    timestamp: Date.now() - 1800000,
-    sadhuCount: 1,
-    image: null,
-    comments: []
-  },
-  {
-    id: "post_204",
-    uid: "user_dharma",
-    author: "ශ්‍රද්ධා ධර්ම දානය",
-    type: "merit",
-    visibility: "public",
-    title: "සිත නිවන කෙටි ධර්ම කරුණක්",
-    category: "ධර්ම දානමය",
-    location: "කොළඹ",
-    description: "සිතේ සැනසීම උදාකරගන්නා අයුරු පැහැදිලි කරන වටිනා කෙටි ධර්ම දේශනාව. ශ්‍රවණය කර සිත පහදවා ගන්න! 🙏",
-    date: "පැය 1කට පෙර",
-    timestamp: Date.now() - 3600000,
-    sadhuCount: 45,
-    videoUrl: "https://www.youtube.com/shorts/5e_0P0c2E2A",
-    videoId: "5e_0P0c2E2A",
-    videoType: "youtube",
-    isShorts: true,
-    videoThumbnail: "https://img.youtube.com/vi/5e_0P0c2E2A/hqdefault.jpg",
-    image: "https://img.youtube.com/vi/5e_0P0c2E2A/hqdefault.jpg",
-    images: ["https://img.youtube.com/vi/5e_0P0c2E2A/hqdefault.jpg"],
-    comments: [
-      { author: "සුමනා පෙරේරා", text: "සාදු! ඉතාමත් පැහැදිලි කෙටි දේශනාවක්.", time: "විනාඩි 30කට පෙර" }
-    ]
-  }
-];
-
-// Sample seed notifications
-const SEED_NOTIFICATIONS = [
-  {
-    id: "notif_101",
-    recipientUid: "user_malith",
-    senderUid: "user_supun",
-    senderName: "සුපුන් පෙරේරා",
-    senderPhoto: null,
-    type: "sadhu",
-    postId: "post_203",
-    postTitle: "රාත්‍රී මෛත්‍රී භාවනාව (විනාඩි 30)",
-    message: "ඔබගේ පින්කමට සාදුකාරයක් ලබා දුන්නා 🙏",
-    timestamp: Date.now() - 1000 * 60 * 18,
-    read: false
-  },
-  {
-    id: "notif_102",
-    recipientUid: "user_malith",
-    senderUid: "user_nimali",
-    senderName: "නිමාලි සිල්වා",
-    senderPhoto: null,
-    type: "comment",
-    postId: "post_203",
-    postTitle: "රාත්‍රී මෛත්‍රී භාවනාව (විනාඩි 30)",
-    message: "ඔබගේ සටහනට පුණ්‍යානුමෝදනාවක් එක් කළාය: 'සාදු! සාදු! ඉතා අගනා පින්කමක්'",
-    timestamp: Date.now() - 1000 * 60 * 55,
-    read: false
-  },
-  {
-    id: "notif_103",
-    recipientUid: "user_malith",
-    senderUid: "user_charity",
-    senderName: "කල්‍යාණ මිත්‍ර එකමුතුව",
-    senderPhoto: null,
-    type: "sathkara",
-    postId: "post_202",
-    postTitle: "දුෂ්කර පාසලක පුස්තකාලයට පොත් අවශ්‍යයි",
-    message: "සත්කාර හවුලේ නව පුණ්‍ය අවස්ථාවක් එක් කර ඇත 🤝",
-    timestamp: Date.now() - 1000 * 60 * 60 * 4,
-    read: true
-  }
-];
-
+// Sample seed data cleaned - empty for pure production feeds
+const SEED_POSTS = [];
+const SEED_NOTIFICATIONS = [];
 
 export const StorageService = {
   _cachedPosts: null,
@@ -190,6 +62,91 @@ export const StorageService = {
   /**
    * Helper to accurately determine whether a post is an Official Post from 'අපේ පිං පොත'
    */
+    isDummyTestPost(p) {
+    if (!p) return true;
+    const id = String(p.id || '');
+    const author = String(p.author || '').trim();
+    const title = String(p.title || '').trim();
+    const desc = String(p.description || '').trim();
+
+    // 1. Known dummy seed post IDs
+    if (id === 'post_201' || id === 'post_202' || id === 'post_203' || id === 'post_204' || id.startsWith('post_20')) {
+      return true;
+    }
+    // 2. Dummy authors
+    if (author === 'සුපුන් පෙරේරා' || author === 'ශ්‍රද්ධා ධර්ම දානය' || author === 'කල්‍යාණ මිත්‍ර එකමුතුව') {
+      return true;
+    }
+    // 3. Dummy titles
+    if (title.includes('ගිලන්පස සහ ඖෂධ පූජාව') || 
+        title.includes('සිත නිවන කෙටි ධර්ම කරුණක්') ||
+        title.includes('දුෂ්කර පාසලක පුස්තකාලයට පොත් අවශ්‍යයි') ||
+        title.includes('රාත්‍රී මෛත්‍රී භාවනාව')) {
+      return true;
+    }
+    // 4. Initial test dummy posts from 'අපේ පිං පොත'
+    if (desc.includes('සදහම් ආලෝකයෙන් තුන් ලොවම') || 
+        desc.includes('ධර්ම දානයක් වේවා') || 
+        desc.includes('පින්වත් සියළු දෙනාටම නිදුක් නීරෝගී') ||
+        desc.includes('අද සවස භාග්‍යවතුන් වහන්සේ උදෙසා සුවඳ මල්') ||
+        desc.includes('සියඹලාණ්ඩුව ප්‍රදේශයේ දුෂ්කර පාසලක')) {
+      return true;
+    }
+    // 5. Unsplash test image URLs from dummy seed posts
+    const imgStr = JSON.stringify(p.images || p.image || '');
+    if (imgStr.includes('photo-1544650039-22886fbb4323') || 
+        imgStr.includes('photo-1514933651103-005eec06c04b') ||
+        imgStr.includes('photo-1509198397868-475647b2a1e5') ||
+        imgStr.includes('photo-1518709268805-4e9042af9f23')) {
+      return true;
+    }
+    return false;
+  },
+
+    purgeDummyPostsFromStorage() {
+    try {
+      // 1. Purge from local storage feed caches
+      ['pinKetha_posts', 'pinPotha_posts', 'pinPotha_sandbox_posts'].forEach(key => {
+        const raw = localStorage.getItem(key);
+        if (raw) {
+          try {
+            const list = JSON.parse(raw);
+            if (Array.isArray(list)) {
+              const cleaned = list.filter(p => !this.isDummyTestPost(p));
+              localStorage.setItem(key, JSON.stringify(cleaned));
+            }
+          } catch(e) {}
+        }
+      });
+
+      // 2. Mark dummy seed IDs as deleted locally so no component can ever display them
+      const localDeleted = this.getDeletedPostIds();
+      const dummySeedIds = ['post_201', 'post_202', 'post_203', 'post_204'];
+      const mergedDeleted = Array.from(new Set([...localDeleted, ...dummySeedIds]));
+      localStorage.setItem('pinPotha_deleted_ids', JSON.stringify(mergedDeleted));
+
+      // 3. Purge test notifications
+      const notifRaw = localStorage.getItem('pinKetha_notifications');
+      if (notifRaw) {
+        try {
+          const list = JSON.parse(notifRaw);
+          if (Array.isArray(list)) {
+            const cleanNotifs = list.filter(n => n.senderName !== 'සුපුන් පෙරේරා' && !String(n.id || '').startsWith('notif_10'));
+            localStorage.setItem('pinKetha_notifications', JSON.stringify(cleanNotifs));
+          }
+        } catch(e) {}
+      }
+
+      // 4. Clean active in-memory caches
+      if (Array.isArray(this._cachedPosts)) {
+        this._cachedPosts = this._cachedPosts.filter(p => !this.isDummyTestPost(p));
+      }
+      if (Array.isArray(this._loadedPosts)) {
+        this._loadedPosts = this._loadedPosts.filter(p => !this.isDummyTestPost(p));
+      }
+    } catch(e) {}
+  },
+
   isOfficialPost(post) {
     if (!post) return false;
     return post.isOfficial === true ||
@@ -420,6 +377,7 @@ export const StorageService = {
    * Initializes the storage engine (Firestore or Sandbox)
    */
   async init() {
+    this.purgeDummyPostsFromStorage();
     // Load local user profile if present
     const savedUser = localStorage.getItem('pinPotha_currentUser');
     if (savedUser) {
@@ -506,6 +464,12 @@ export const StorageService = {
           const posts = [];
           snapshot.forEach((doc) => {
             const data = doc.data();
+            if (this.isDummyTestPost({ id: doc.id, ...data })) {
+              if (this.isMasterAdmin()) {
+                this.deletePost(doc.id).catch(() => {});
+              }
+              return; // Exclude dummy test posts from feed stream
+            }
             const isOfficial = this.isOfficialPost(data);
             const isUserPost = Boolean(this.currentUser && (
               data.uid === this.currentUser.uid ||
@@ -736,15 +700,16 @@ export const StorageService = {
   },
 
   getLocalPosts() {
+    this.purgeDummyPostsFromStorage();
     const deletedIds = this.getDeletedPostIds();
     const isCleanPost = (p) => {
-      if (!p || p.isDeleted === true) return false;
+      if (!p || p.isDeleted === true || this.isDummyTestPost(p)) return false;
       const isOff = this.isOfficialPost(p);
       const isUser = Boolean(this.currentUser && (
         p.uid === this.currentUser.uid ||
         (this.currentUser.email && p.authorEmail && p.authorEmail.toLowerCase() === this.currentUser.email.toLowerCase())
       ));
-      if (isOff || isUser) return true;
+      if (isUser) return true;
       return !deletedIds.includes(p.id);
     };
 
@@ -778,14 +743,7 @@ export const StorageService = {
 
       const map = new Map();
       combined.forEach(p => {
-        if (p && p.id) {
-          p.isOfficial = this.isOfficialPost(p);
-          map.set(p.id, p);
-        }
-      });
-
-      SEED_POSTS.forEach(p => {
-        if (p && p.id && !map.has(p.id)) {
+        if (p && p.id && !this.isDummyTestPost(p)) {
           p.isOfficial = this.isOfficialPost(p);
           map.set(p.id, p);
         }
@@ -797,7 +755,7 @@ export const StorageService = {
       this._loadedPosts = clean;
       return this.syncPostsWithUserSadhus(clean);
     } catch {
-      return this.syncPostsWithUserSadhus(SEED_POSTS.filter(isCleanPost));
+      return [];
     }
   },
 
@@ -805,7 +763,7 @@ export const StorageService = {
     if (!Array.isArray(posts) || posts.length === 0) return;
     const deletedIds = this.getDeletedPostIds();
     const cleanPosts = (posts || []).filter(p => {
-      if (!p || p.isDeleted === true) return false;
+      if (!p || p.isDeleted === true || this.isDummyTestPost(p)) return false;
       const isOff = this.isOfficialPost(p);
       const isUser = Boolean(this.currentUser && (
         p.uid === this.currentUser.uid ||
@@ -851,6 +809,7 @@ export const StorageService = {
     (currentList || []).forEach(p => map.set(p.id, p));
     let hasNew = false;
     additionalPosts.forEach(p => {
+      if (!p || this.isDummyTestPost(p)) return;
       if ((!deletedIds.includes(p.id) || p.isOfficial) && p.isDeleted !== true) {
         if (!map.has(p.id)) {
           map.set(p.id, p);
@@ -924,6 +883,7 @@ export const StorageService = {
       const newBatch = [];
       snap.forEach(docSnap => {
         const data = docSnap.data();
+        if (this.isDummyTestPost({ id: docSnap.id, ...data })) return;
         if (!deletedIds.includes(docSnap.id) && data.isDeleted !== true) {
           const rawSadhu = typeof data.sadhuCount === 'number' ? data.sadhuCount : 0;
           newBatch.push({
