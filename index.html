@@ -51,12 +51,12 @@
     <link rel="apple-touch-icon" href="assets/icon-192.png">
 
     <!-- Core Pure CSS Design System -->
-    <link rel="stylesheet" href="css/styles.css?v=105">
+    <link rel="stylesheet" href="css/styles.css?v=106">
 
     <!-- Immediate Service Worker & Cache Invalidation Script -->
     <script>
       (function() {
-        var v = 'v105';
+        var v = 'v106';
         if (localStorage.getItem('pinPotha_active_build') !== v) {
           localStorage.setItem('pinPotha_active_build', v);
           if ('caches' in window) {
@@ -115,6 +115,9 @@
                 </button>
                 <button onclick="switchTab('aranya')" id="desk-tab-aranya" class="nav-tab-btn" title="ශ්‍රී ලංකා ආරණ්‍ය සේනාසන නාමාවලිය" aria-label="ආරණ්‍ය සේනාසන නාමාවලිය">
                     <i class="fa-solid fa-mountain-sun" style="color: #10b981;"></i>
+                </button>
+                <button onclick="switchTab('friends')" id="desk-tab-friends" class="nav-tab-btn" title="කල්‍යාණ මිතුරු පවුර" aria-label="කල්‍යාණ මිතුරු පවුර">
+                    <i class="fa-solid fa-user-group" style="color: #0284c7;"></i>
                 </button>
             </nav>
 
@@ -946,6 +949,155 @@
                 <p>ඔබ සොයන ආරණ්‍යයේ නම හෝ දිස්ත්‍රික්කය වෙනස් කර නැවත සොයන්න.</p>
                 <button type="button" class="btn-profile-primary" onclick="resetAranyaFilters()" style="margin: 0 auto;">
                     <i class="fa-solid fa-rotate-left"></i> සියලු ආරණ්‍ය පෙන්වන්න
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= KALYANA MITHURU PAWURA DIRECTORY VIEW ================= -->
+    <div id="friendsPageContainer" class="kmp-page-container hidden" style="display: none;">
+        <div class="kmp-page-content">
+            <!-- Hero Banner Card -->
+            <div class="kmp-hero-card">
+                <div class="kmp-hero-badge">
+                    <i class="fa-solid fa-user-group"></i>
+                    <span>කල්‍යාණ මිතුරු ජාලය • සාමාජික නාමාවලිය</span>
+                </div>
+                <h1 class="kmp-hero-title">කල්‍යාණ මිතුරු පවුර</h1>
+                <p class="kmp-hero-desc">
+                    සම්බුදු සසුන බැබළවීමට හා කුසල් දහම් දියුණු කිරීමට එක්වූ පින්වත් මහා සංඝරත්නය සහ සැදැහැවත් කල්‍යාණ මිතුරන් සමඟ එකමුතු වන්න.
+                </p>
+
+                <!-- Real-time Live Online & Summary Statistics Bar -->
+                <div class="kmp-stats-row">
+                    <div class="kmp-live-pill" id="kmpLiveOnlinePill" title="දැන් සජීවීව පද්ධතිය තුළ රැඳී සිටින සාමාජිකයින් ගණන">
+                        <span class="kmp-live-pulse-dot"></span>
+                        <span class="kmp-live-label">සජීවීව Online:</span>
+                        <strong id="kmpLiveOnlineCount">...</strong>
+                    </div>
+                    <div class="kmp-stat-pill" title="පිං පොතෙහි ලියාපදිංචි සමස්ත සාමාජිකයින්">
+                        <i class="fa-solid fa-users" style="color: #fef08a;"></i>
+                        <span class="kmp-stat-label">සමස්ත සාමාජිකයින්:</span>
+                        <strong id="kmpTotalMembersCount">0</strong>
+                    </div>
+                    <div class="kmp-stat-pill" title="ඔබ හා සම්බන්ධ වී ඇති කල්‍යාණ මිතුරන්">
+                        <i class="fa-solid fa-heart" style="color: #fca5a5;"></i>
+                        <span class="kmp-stat-label">මගේ මිතුරන්:</span>
+                        <strong id="kmpMyFriendsCount">0</strong>
+                    </div>
+                    <div class="kmp-stat-pill" title="පූජනීය මහා සංඝරත්නය">
+                        <i class="fa-solid fa-dharmachakra" style="color: #fdba74;"></i>
+                        <span class="kmp-stat-label">මහා සංඝරත්නය:</span>
+                        <strong id="kmpSanghaMembersCount">0</strong>
+                    </div>
+                </div>
+
+                <!-- Hero Action Buttons -->
+                <div class="kmp-hero-actions">
+                    <button type="button" class="btn-kmp-back" onclick="switchTab('feed')">
+                        <i class="fa-solid fa-arrow-left"></i>
+                        <span>පුණ්‍ය පවුර වෙත</span>
+                    </button>
+                    <button type="button" class="btn-kmp-profile" onclick="switchTab('profile')">
+                        <i class="fa-solid fa-user"></i>
+                        <span>මගේ Profile එක</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Search, Filter Segments & View Controls Card -->
+            <div class="kmp-controls-card">
+                <!-- Search Input Row -->
+                <div class="kmp-search-row">
+                    <div class="kmp-search-input-wrap">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="kmpSearchInput" placeholder="නම, ප්‍රදේශය, හෝ විස්තර සොයන්න..." oninput="handleKmpSearch(this.value)">
+                        <button type="button" id="kmpClearSearchBtn" class="kmp-clear-search-btn hidden" onclick="clearKmpSearch()" title="සෙවුම මකන්න">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+
+                    <!-- Sort Dropdown & View Mode Switcher -->
+                    <div class="kmp-toolbar-right">
+                        <div class="kmp-sort-wrap">
+                            <i class="fa-solid fa-arrow-down-wide-short"></i>
+                            <select id="kmpSortSelect" onchange="handleKmpSortChange(this.value)" class="kmp-sort-select" title="පිළිවෙල තෝරන්න">
+                                <option value="active">වඩාත් ක්‍රියාකාරී (Most Active)</option>
+                                <option value="newest">අලුතින් එක්වූ (Newest)</option>
+                                <option value="name">නම අනුව (A - Z)</option>
+                            </select>
+                        </div>
+                        <div class="kmp-view-toggle">
+                            <button type="button" id="kmpViewGridBtn" class="kmp-view-btn active" onclick="setKmpViewMode('grid')" title="කාඩ්පත් ආකාරයෙන්">
+                                <i class="fa-solid fa-grip"></i>
+                            </button>
+                            <button type="button" id="kmpViewListBtn" class="kmp-view-btn" onclick="setKmpViewMode('list')" title="ලැයිස්තුවක් ආකාරයෙන්">
+                                <i class="fa-solid fa-list-ul"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Segments Scrollable Bar (All, Friends, Online Now, Sangha, Suggested, Requests) -->
+                <div class="kmp-segments-bar" id="kmpSegmentsBar">
+                    <button type="button" class="kmp-segment-chip active" id="kmpSegAll" onclick="switchKmpSegment('all')">
+                        <i class="fa-solid fa-users"></i>
+                        <span>සියලු සාමාජිකයින්</span>
+                        <span class="kmp-chip-count" id="kmpSegCountAll">0</span>
+                    </button>
+                    <button type="button" class="kmp-segment-chip" id="kmpSegFriends" onclick="switchKmpSegment('friends')">
+                        <i class="fa-solid fa-user-check"></i>
+                        <span>මගේ මිතුරන්</span>
+                        <span class="kmp-chip-count" id="kmpSegCountFriends">0</span>
+                    </button>
+                    <button type="button" class="kmp-segment-chip" id="kmpSegOnline" onclick="switchKmpSegment('online')">
+                        <span class="kmp-pulse-dot-mini"></span>
+                        <span>දැන් Online</span>
+                        <span class="kmp-chip-count" id="kmpSegCountOnline">0</span>
+                    </button>
+                    <button type="button" class="kmp-segment-chip" id="kmpSegSangha" onclick="switchKmpSegment('sangha')">
+                        <i class="fa-solid fa-dharmachakra" style="color: #d97706;"></i>
+                        <span>මහා සංඝරත්නය</span>
+                        <span class="kmp-chip-count" id="kmpSegCountSangha">0</span>
+                    </button>
+                    <button type="button" class="kmp-segment-chip" id="kmpSegSuggested" onclick="switchKmpSegment('suggested')">
+                        <i class="fa-solid fa-wand-magic-sparkles" style="color: #8b5cf6;"></i>
+                        <span>යෝජිත මිතුරන්</span>
+                    </button>
+                    <button type="button" class="kmp-segment-chip" id="kmpSegRequests" onclick="switchKmpSegment('requests')">
+                        <i class="fa-solid fa-clock-rotate-left" style="color: #f59e0b;"></i>
+                        <span>ලැබුණු ඇරයුම්</span>
+                        <span class="kmp-chip-count badge-pending-glow hidden" id="kmpSegCountRequests">0</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Active Filter / Results Count Header -->
+            <div class="kmp-results-header">
+                <div class="kmp-results-count-wrap">
+                    <span id="kmpResultsCount" class="kmp-results-count">සාමාජිකයින් පූරණය වෙමින්...</span>
+                    <span id="kmpResultsSegmentBadge" class="kmp-results-segment-badge">සියල්ල</span>
+                </div>
+                <div class="kmp-live-indicator-pill">
+                    <span class="kmp-pulse-dot-mini"></span>
+                    <span>සජීවී සබඳතා ජාලය (Live Directory)</span>
+                </div>
+            </div>
+
+            <!-- Member Cards Grid / List Container -->
+            <div class="kmp-grid" id="kmpGridContainer">
+                <!-- Rendered dynamically via JS -->
+            </div>
+
+            <!-- Empty State -->
+            <div id="kmpEmptyState" class="kmp-empty-state hidden" style="display: none;">
+                <div class="kmp-empty-icon-wrap">
+                    <i class="fa-solid fa-users-slash empty-icon"></i>
+                </div>
+                <h3 id="kmpEmptyTitle">කිසිදු සාමාජිකයෙකු හමු නොවීය</h3>
+                <p id="kmpEmptyDesc">ඔබ සොයන නම හෝ පෙරහන වෙනස් කර නැවත සොයා බලන්න.</p>
+                <button type="button" class="btn-profile-primary" onclick="resetKmpFilters()" style="margin: 0 auto;">
+                    <i class="fa-solid fa-rotate-left"></i> සියලු සාමාජිකයින් පෙන්වන්න
                 </button>
             </div>
         </div>
@@ -2642,7 +2794,7 @@
             <i class="fa-solid fa-house-chimney"></i>
         </button>
 
-        <button type="button" onclick="openFriendsView()" id="mob-tab-friends" class="mob-nav-item" title="කල්‍යාණ මිතුරන්" aria-label="කල්‍යාණ මිතුරන්">
+        <button type="button" onclick="switchTab('friends')" id="mob-tab-friends" class="mob-nav-item" title="කල්‍යාණ මිතුරන්" aria-label="කල්‍යාණ මිතුරන්">
             <div style="position: relative; display: inline-flex;">
                 <i class="fa-solid fa-user-group"></i>
                 <span id="mobFriendsBadge" class="mob-badge-count" style="display: none;">0</span>
@@ -2815,18 +2967,6 @@
                 </div>
 
                 <div class="drawer-items-list">
-                    <!-- Dharma Shorts -->
-                    <button type="button" class="drawer-list-btn" onclick="closeMobileMenuDrawer(); openReelsViewer();">
-                        <div class="drawer-btn-icon" style="background: rgba(239, 68, 68, 0.12); color: #ef4444;">
-                            <i class="fa-solid fa-play"></i>
-                        </div>
-                        <div class="drawer-btn-text">
-                            <span class="drawer-btn-title">පුණ්‍ය දැක්ම (Dharma Shorts)</span>
-                            <span class="drawer-btn-sub">කෙටි දහම් වීඩියෝ</span>
-                        </div>
-                        <span class="drawer-mini-pill" style="background: #fee2e2; color: #b91c1c;">Shorts</span>
-                    </button>
-
                     <!-- Sathkara Hawula -->
                     <button type="button" class="drawer-list-btn" onclick="closeMobileMenuDrawer(); switchTab('needs');">
                         <div class="drawer-btn-icon" style="background: rgba(245, 158, 11, 0.12); color: #d97706;">
@@ -2840,7 +2980,7 @@
                     </button>
 
                     <!-- Kalyana Mithra Friends -->
-                    <button type="button" class="drawer-list-btn" onclick="closeMobileMenuDrawer(); openFriendsView();">
+                    <button type="button" class="drawer-list-btn" onclick="closeMobileMenuDrawer(); switchTab('friends');">
                         <div class="drawer-btn-icon" style="background: rgba(14, 165, 233, 0.12); color: #0284c7;">
                             <i class="fa-solid fa-user-group"></i>
                         </div>
@@ -2900,6 +3040,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <!-- Application ES Modules -->
-    <script type="module" src="js/app.js?v=105"></script>
+    <script type="module" src="js/app.js?v=106"></script>
 </body>
 </html>

@@ -944,6 +944,7 @@ window.switchTab = function(tab, pushHistory = true) {
   const feedLayout = document.getElementById('mainFeedLayout');
   const profileContainer = document.getElementById('profilePageContainer');
   const aranyaContainer = document.getElementById('aranyaPageContainer');
+  const friendsContainer = document.getElementById('friendsPageContainer');
   const banner = document.getElementById('tabHeaderBanner');
 
   if (tab === 'profile') {
@@ -954,6 +955,10 @@ window.switchTab = function(tab, pushHistory = true) {
     if (aranyaContainer) {
       aranyaContainer.classList.add('hidden');
       aranyaContainer.style.setProperty('display', 'none', 'important');
+    }
+    if (friendsContainer) {
+      friendsContainer.classList.add('hidden');
+      friendsContainer.style.setProperty('display', 'none', 'important');
     }
     if (profileContainer) {
       profileContainer.classList.remove('hidden');
@@ -980,6 +985,10 @@ window.switchTab = function(tab, pushHistory = true) {
       profileContainer.classList.add('hidden');
       profileContainer.style.setProperty('display', 'none', 'important');
     }
+    if (friendsContainer) {
+      friendsContainer.classList.add('hidden');
+      friendsContainer.style.setProperty('display', 'none', 'important');
+    }
     if (aranyaContainer) {
       aranyaContainer.classList.remove('hidden');
       aranyaContainer.style.setProperty('display', 'block', 'important');
@@ -996,7 +1005,36 @@ window.switchTab = function(tab, pushHistory = true) {
     return;
   }
 
-  // Non-profile, non-aranya tabs: show main feed layout, hide profile & aranya container
+  if (tab === 'friends') {
+    if (feedLayout) {
+      feedLayout.classList.add('hidden');
+      feedLayout.style.setProperty('display', 'none', 'important');
+    }
+    if (profileContainer) {
+      profileContainer.classList.add('hidden');
+      profileContainer.style.setProperty('display', 'none', 'important');
+    }
+    if (aranyaContainer) {
+      aranyaContainer.classList.add('hidden');
+      aranyaContainer.style.setProperty('display', 'none', 'important');
+    }
+    if (friendsContainer) {
+      friendsContainer.classList.remove('hidden');
+      friendsContainer.style.setProperty('display', 'block', 'important');
+    }
+    if (banner) banner.style.display = 'none';
+
+    try {
+      renderKmpDirectoryView();
+    } catch (err) {
+      console.error('[KMP] Error rendering friends view:', err);
+    }
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return;
+  }
+
+  // Non-profile, non-aranya, non-friends tabs: show main feed layout, hide special containers
   if (feedLayout) {
     feedLayout.classList.remove('hidden');
     feedLayout.style.removeProperty('display');
@@ -1009,6 +1047,10 @@ window.switchTab = function(tab, pushHistory = true) {
   if (aranyaContainer) {
     aranyaContainer.classList.add('hidden');
     aranyaContainer.style.setProperty('display', 'none', 'important');
+  }
+  if (friendsContainer) {
+    friendsContainer.classList.add('hidden');
+    friendsContainer.style.setProperty('display', 'none', 'important');
   }
 
   // Context banner
@@ -7157,6 +7199,395 @@ window.handleSendMithraFromDirectory = async function(targetUid, targetName) {
   await handleSendMithra(targetUid, targetName);
   renderCommunityDirectory();
   renderPcSidebarMembers();
+  if (activeTab === 'friends') renderKmpDirectoryView(true);
+};
+
+// ============================================================================
+// Kalyana Mithuru Pawura (Direct Directory Page) Controller
+// ============================================================================
+window.openFriendsView = function(segment) {
+  window.switchTab('friends');
+  if (segment) {
+    const targetSeg = segment === 'my' ? 'friends' : segment;
+    if (window.switchKmpSegment) window.switchKmpSegment(targetSeg);
+  }
+};
+
+let kmpActiveSegment = 'all'; // 'all', 'friends', 'online', 'sangha', 'suggested', 'requests'
+let kmpSearchQuery = '';
+let kmpSortMode = 'active'; // 'active', 'newest', 'name'
+let kmpViewMode = 'grid'; // 'grid', 'list'
+let kmpMembersCache = [];
+
+window.switchKmpSegment = function(seg) {
+  triggerHaptic(12);
+  kmpActiveSegment = seg;
+
+  const chips = ['all', 'friends', 'online', 'sangha', 'suggested', 'requests'];
+  chips.forEach(s => {
+    const chip = document.getElementById(`kmpSeg${s.charAt(0).toUpperCase() + s.slice(1)}`);
+    if (chip) {
+      if (s === seg) chip.classList.add('active');
+      else chip.classList.remove('active');
+    }
+  });
+
+  renderKmpDirectoryView(false);
+};
+
+window.handleKmpSearch = function(val) {
+  kmpSearchQuery = (val || '').trim();
+  const clearBtn = document.getElementById('kmpClearSearchBtn');
+  if (clearBtn) {
+    if (kmpSearchQuery) clearBtn.classList.remove('hidden');
+    else clearBtn.classList.add('hidden');
+  }
+  renderKmpDirectoryView(false);
+};
+
+window.clearKmpSearch = function() {
+  kmpSearchQuery = '';
+  const input = document.getElementById('kmpSearchInput');
+  if (input) input.value = '';
+  const clearBtn = document.getElementById('kmpClearSearchBtn');
+  if (clearBtn) clearBtn.classList.add('hidden');
+  renderKmpDirectoryView(false);
+};
+
+window.handleKmpSortChange = function(sort) {
+  kmpSortMode = sort || 'active';
+  renderKmpDirectoryView(false);
+};
+
+window.setKmpViewMode = function(mode) {
+  kmpViewMode = mode;
+  const gridBtn = document.getElementById('kmpViewGridBtn');
+  const listBtn = document.getElementById('kmpViewListBtn');
+  const container = document.getElementById('kmpGridContainer');
+
+  if (gridBtn && listBtn) {
+    if (mode === 'grid') {
+      gridBtn.classList.add('active');
+      listBtn.classList.remove('active');
+    } else {
+      listBtn.classList.add('active');
+      gridBtn.classList.remove('active');
+    }
+  }
+
+  if (container) {
+    if (mode === 'list') container.classList.add('list-view');
+    else container.classList.remove('list-view');
+  }
+};
+
+window.resetKmpFilters = function() {
+  kmpActiveSegment = 'all';
+  kmpSearchQuery = '';
+  kmpSortMode = 'active';
+  const searchInput = document.getElementById('kmpSearchInput');
+  if (searchInput) searchInput.value = '';
+  const clearBtn = document.getElementById('kmpClearSearchBtn');
+  if (clearBtn) clearBtn.classList.add('hidden');
+  const sortSelect = document.getElementById('kmpSortSelect');
+  if (sortSelect) sortSelect.value = 'active';
+
+  const chips = ['all', 'friends', 'online', 'sangha', 'suggested', 'requests'];
+  chips.forEach(s => {
+    const chip = document.getElementById(`kmpSeg${s.charAt(0).toUpperCase() + s.slice(1)}`);
+    if (chip) {
+      if (s === 'all') chip.classList.add('active');
+      else chip.classList.remove('active');
+    }
+  });
+
+  renderKmpDirectoryView(false);
+};
+
+window.renderKmpDirectoryView = async function(forceRefresh = false) {
+  const container = document.getElementById('kmpGridContainer');
+  const emptyState = document.getElementById('kmpEmptyState');
+  if (!container) return;
+
+  // Keep current user presence alive
+  try {
+    StorageService.updateUserPresence();
+  } catch (e) {}
+
+  if (forceRefresh || kmpMembersCache.length === 0) {
+    container.innerHTML = `
+      <div style="grid-column: 1 / -1; text-align: center; padding: 48px 20px; color: #78350f;">
+        <i class="fa-solid fa-spinner fa-spin" style="font-size: 2.2rem; color: #d97706; margin-bottom: 12px;"></i>
+        <p style="font-size: 0.92rem; font-weight: 700;">කල්‍යාණ මිතුරු පවුර සූදානම් වෙමින් පවතී...</p>
+      </div>
+    `;
+    kmpMembersCache = await StorageService.getAllCommunityMembers(forceRefresh);
+  }
+
+  const currentUser = StorageService.currentUser || {};
+  const currentMithrayan = Array.isArray(currentUser.mithrayan) ? currentUser.mithrayan : [];
+  const currentSent = Array.isArray(currentUser.pendingMithraSent) ? currentUser.pendingMithraSent : [];
+
+  // Notifications for pending incoming requests
+  const notifs = StorageService.getLocalNotifications() || [];
+  const pendingIncoming = notifs.filter(n =>
+    n.type === 'mithra_request' &&
+    n.recipientUid === currentUser.uid &&
+    !StorageService.isRequestAccepted(n.id, n.senderUid) &&
+    !StorageService.isRequestDeclined(n.id, n.senderUid) &&
+    (!currentUser.mithrayan || !currentUser.mithrayan.includes(n.senderUid)) &&
+    (!n.status || n.status === 'pending')
+  );
+
+  // Calculate live presence stats
+  let onlineCount = kmpMembersCache.filter(m => m.isOnline).length;
+  if (onlineCount === 0 && currentUser.uid) onlineCount = 1;
+
+  const totalMembers = kmpMembersCache.length;
+  const friendsCount = currentMithrayan.length;
+  const sanghaCount = kmpMembersCache.filter(m => m.isSangha).length;
+
+  // Update Hero & Segments counters
+  const liveEl = document.getElementById('kmpLiveOnlineCount');
+  if (liveEl) liveEl.innerText = `${onlineCount} දෙනෙක්`;
+
+  const totalEl = document.getElementById('kmpTotalMembersCount');
+  if (totalEl) totalEl.innerText = totalMembers;
+
+  const myFriendsEl = document.getElementById('kmpMyFriendsCount');
+  if (myFriendsEl) myFriendsEl.innerText = friendsCount;
+
+  const sanghaEl = document.getElementById('kmpSanghaMembersCount');
+  if (sanghaEl) sanghaEl.innerText = sanghaCount;
+
+  const countAll = document.getElementById('kmpSegCountAll');
+  if (countAll) countAll.innerText = totalMembers;
+
+  const countFriends = document.getElementById('kmpSegCountFriends');
+  if (countFriends) countFriends.innerText = friendsCount;
+
+  const countOnline = document.getElementById('kmpSegCountOnline');
+  if (countOnline) countOnline.innerText = onlineCount;
+
+  const countSangha = document.getElementById('kmpSegCountSangha');
+  if (countSangha) countSangha.innerText = sanghaCount;
+
+  const countReq = document.getElementById('kmpSegCountRequests');
+  if (countReq) {
+    countReq.innerText = pendingIncoming.length;
+    if (pendingIncoming.length > 0) {
+      countReq.classList.remove('hidden');
+    } else {
+      countReq.classList.add('hidden');
+    }
+  }
+
+  // Filter based on segment
+  let list = [...kmpMembersCache];
+
+  if (kmpActiveSegment === 'friends') {
+    list = list.filter(m => currentMithrayan.includes(m.uid));
+  } else if (kmpActiveSegment === 'online') {
+    list = list.filter(m => m.isOnline);
+  } else if (kmpActiveSegment === 'sangha') {
+    list = list.filter(m => m.isSangha);
+  } else if (kmpActiveSegment === 'suggested') {
+    list = list.filter(m => m.uid !== currentUser.uid && !currentMithrayan.includes(m.uid));
+    list.sort((a, b) => ((b.postsCount || 0) + (b.totalSadhu || 0)) - ((a.postsCount || 0) + (a.totalSadhu || 0)));
+  } else if (kmpActiveSegment === 'requests') {
+    const senderUids = pendingIncoming.map(r => r.senderUid);
+    list = list.filter(m => senderUids.includes(m.uid));
+    pendingIncoming.forEach(req => {
+      if (!list.some(m => m.uid === req.senderUid)) {
+        list.push({
+          uid: req.senderUid,
+          name: req.senderName || 'කල්‍යාණ මිත්‍ර',
+          photo: req.senderPhoto || '',
+          bio: 'කල්‍යාණ මිතුරු ඇරයුමක් එවා ඇත',
+          location: '',
+          joinedDate: '2026',
+          isOnline: true,
+          isSangha: StorageService.isSangha(req) || StorageService.isSangha({ uid: req.senderUid, name: req.senderName }),
+          role: 'member',
+          postsCount: 1,
+          totalSadhu: 0,
+          mithrayanCount: 0
+        });
+      }
+    });
+  }
+
+  // Search filter
+  if (kmpSearchQuery) {
+    const q = kmpSearchQuery.toLowerCase();
+    list = list.filter(m =>
+      (m.name || '').toLowerCase().includes(q) ||
+      (m.bio || '').toLowerCase().includes(q) ||
+      (m.location || '').toLowerCase().includes(q)
+    );
+  }
+
+  // Sorting
+  if (kmpSortMode === 'active') {
+    list.sort((a, b) => {
+      if (a.isOnline && !b.isOnline) return -1;
+      if (!a.isOnline && b.isOnline) return 1;
+      return (b.lastActiveAt || b.updatedAt || 0) - (a.lastActiveAt || a.updatedAt || 0);
+    });
+  } else if (kmpSortMode === 'newest') {
+    list.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  } else if (kmpSortMode === 'name') {
+    list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  }
+
+  // Results count & segment badge
+  const resultsCountEl = document.getElementById('kmpResultsCount');
+  if (resultsCountEl) resultsCountEl.innerText = `සාමාජිකයින් ${list.length} දෙනෙක්`;
+
+  const badgeEl = document.getElementById('kmpResultsSegmentBadge');
+  if (badgeEl) {
+    const segNames = {
+      all: 'සියලු සාමාජිකයින්',
+      friends: 'මගේ මිතුරන්',
+      online: 'දැන් Online',
+      sangha: 'මහා සංඝරත්නය',
+      suggested: 'යෝජිත මිතුරන්',
+      requests: 'ලැබුණු ඇරයුම්'
+    };
+    badgeEl.innerText = segNames[kmpActiveSegment] || 'සියල්ල';
+  }
+
+  // Empty state handling
+  if (list.length === 0) {
+    if (emptyState) {
+      emptyState.classList.remove('hidden');
+      emptyState.style.display = 'block';
+      const emptyTitle = document.getElementById('kmpEmptyTitle');
+      const emptyDesc = document.getElementById('kmpEmptyDesc');
+      if (kmpActiveSegment === 'friends') {
+        if (emptyTitle) emptyTitle.innerText = 'තවමත් කල්‍යාණ මිතුරන් සම්බන්ධ වී නොමැත';
+        if (emptyDesc) emptyDesc.innerText = 'සාමාජික නාමාවලියෙන් නව කල්‍යාණ මිතුරන්ට ඇරයුම් කර ඔබේ පවුර පුළුල් කරගන්න.';
+      } else if (kmpActiveSegment === 'requests') {
+        if (emptyTitle) emptyTitle.innerText = 'ලැබුණු ඇරයුම් කිසිවක් නොමැත';
+        if (emptyDesc) emptyDesc.innerText = 'නව කල්‍යාණ මිතුරු ඇරයුම් ලැබුණු විට මෙහි දිස්වනු ඇත.';
+      } else if (kmpActiveSegment === 'online') {
+        if (emptyTitle) emptyTitle.innerText = 'දැනට වෙනත් සාමාජිකයින් Online නොමැත';
+        if (emptyDesc) emptyDesc.innerText = 'මඳ වේලාවකින් නැවත පරික්ෂා කර බලන්න.';
+      } else {
+        if (emptyTitle) emptyTitle.innerText = 'කිසිදු සාමාජිකයෙකු හමු නොවීය';
+        if (emptyDesc) emptyDesc.innerText = 'ඔබ සොයන නම හෝ පෙරහන වෙනස් කර නැවත සොයා බලන්න.';
+      }
+    }
+    container.innerHTML = '';
+    return;
+  }
+
+  if (emptyState) {
+    emptyState.classList.add('hidden');
+    emptyState.style.display = 'none';
+  }
+
+  // Render cards
+  container.innerHTML = list.map(m => {
+    const isMe = m.uid === currentUser.uid;
+    const isFriend = currentMithrayan.includes(m.uid);
+    const isSent = currentSent.includes(m.uid);
+    const initial = (m.name || 'ක').charAt(0);
+
+    const isMemberSangha = StorageService.isSangha(m);
+    const isMemberMaster = StorageService.isMasterAdmin(m);
+    const isMemberSubAdmin = !isMemberMaster && StorageService.isSubAdmin(m);
+
+    // Incoming request check
+    const pendingReq = pendingIncoming.find(r => r.senderUid === m.uid);
+
+    let actionBtnHtml = '';
+    if (isMe) {
+      actionBtnHtml = `
+        <span class="kmp-badge-friend" style="background: #fef3c7; border-color: #fde68a; color: #92400e;">
+          <i class="fa-solid fa-circle-user"></i> ඔබගේ Profile එක
+        </span>
+      `;
+    } else if (pendingReq) {
+      actionBtnHtml = `
+        <button type="button" class="kmp-btn-action-primary" style="background: linear-gradient(135deg, #10b981, #059669);" onclick="event.stopPropagation(); handleAcceptKmpRequest('${pendingReq.id}', '${m.uid}', '${Security.escapeHTML(m.name)}')">
+          <i class="fa-solid fa-circle-check"></i> පිළිගන්න
+        </button>
+        <button type="button" class="kmp-btn-view-profile" onclick="event.stopPropagation(); handleRejectKmpRequest('${pendingReq.id}', '${m.uid}')" title="ඉවත් කරන්න">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      `;
+    } else if (isMemberSangha) {
+      const isRevered = StorageService.isReveringSangha(m.uid);
+      actionBtnHtml = isRevered
+        ? `<button type="button" class="kmp-btn-action-primary" style="background: #fef3c7; color: #92400e; border: 1px solid #fde68a;" onclick="event.stopPropagation(); handleToggleSanghaReverence('${m.uid}', '${Security.escapeHTML(m.name)}')"><i class="fa-solid fa-hands-praying"></i> නමස්කාර කර ඇත 🙏</button>`
+        : `<button type="button" class="kmp-btn-action-primary" style="background: linear-gradient(135deg, #d97706, #b45309);" onclick="event.stopPropagation(); handleToggleSanghaReverence('${m.uid}', '${Security.escapeHTML(m.name)}')"><i class="fa-solid fa-hands-praying"></i> නමස්කාර කරමි 🙏</button>`;
+    } else if (isFriend) {
+      actionBtnHtml = `<span class="kmp-badge-friend"><i class="fa-solid fa-circle-check"></i> කල්‍යාණ මිතුරෙකි</span>`;
+    } else if (isSent) {
+      actionBtnHtml = `<span class="kmp-badge-friend" style="background: #fffbeb; color: #b45309; border-color: #fde68a;"><i class="fa-solid fa-clock"></i> ඇරයුමක් යවා ඇත</span>`;
+    } else {
+      actionBtnHtml = `
+        <button type="button" class="kmp-btn-action-primary" onclick="event.stopPropagation(); handleSendKmpRequest('${m.uid}', '${Security.escapeHTML(m.name)}')">
+          <i class="fa-solid fa-user-plus"></i> මිතුරු වන්න
+        </button>
+      `;
+    }
+
+    return `
+      <div class="kmp-card" onclick="openMemberProfileModal('${m.uid}', '${Security.escapeHTML(m.name)}')">
+        <div class="kmp-card-top">
+          <div class="kmp-avatar-wrap ${isMemberSangha ? 'kmp-sangha-avatar' : ''}">
+            ${m.photo ? `<img src="${Security.sanitizeUrl(m.photo)}" alt="${Security.escapeHTML(m.name)}" class="kmp-avatar-img" onerror="this.parentElement.innerHTML = '<div class=\\'kmp-avatar-initial\\'>${initial}</div>';">` : `<div class="kmp-avatar-initial">${initial}</div>`}
+            ${m.isOnline ? `<span class="kmp-online-dot" title="දැන් සජීවීව Online"></span>` : ''}
+            ${isMemberSangha ? '<img src="assets/sangha-frame.png" class="sangha-vatapatha-frame" alt="වටාපත">' : ''}
+          </div>
+          <div class="kmp-card-meta">
+            <div class="kmp-name-row">
+              <span class="kmp-member-name">${Security.escapeHTML(m.name || 'කල්‍යාණ මිත්‍ර')}</span>
+              ${isMemberMaster ? `<span class="badge-crown" title="Master Admin">👑</span>` : (isMemberSubAdmin ? `<span class="badge-shield" title="පරිපාලක (Admin)">🛡️</span>` : '')}
+              ${isMemberSangha ? `<span class="sangha-author-badge" style="margin-left: 3px; padding: 1px 6px; font-size: 0.6rem;"><i class="fa-solid fa-dharmachakra"></i> පූජනීය සංඝරත්නය</span>` : ''}
+            </div>
+            ${m.isOnline
+              ? `<div class="kmp-presence-tag"><span class="kmp-pulse-dot-mini"></span> <span>දැන් Online</span></div>`
+              : `<div class="kmp-presence-tag offline"><i class="fa-solid fa-clock-rotate-left"></i> <span>ක්‍රියාකාරී විය</span></div>`
+            }
+            ${m.location ? `<div class="kmp-location-text"><i class="fa-solid fa-location-dot" style="color: #ea580c;"></i> <span>${Security.escapeHTML(m.location)}</span></div>` : ''}
+          </div>
+        </div>
+
+        ${m.bio ? `<p class="kmp-card-bio">${Security.escapeHTML(m.bio)}</p>` : ''}
+
+        <div class="kmp-card-stats">
+          <span title="පින්කම් සටහන්"><i class="fa-solid fa-dharmachakra" style="color: #d97706;"></i> පින්කම්: <strong>${m.postsCount || 0}</strong></span>
+          <span title="ලද සාදුකාර"><i class="fa-solid fa-hands-praying" style="color: #ea580c;"></i> සාදු: <strong>${m.totalSadhu || 0}</strong></span>
+          <span title="මිතුරන්"><i class="fa-solid fa-user-group" style="color: #059669;"></i> මිතුරන්: <strong>${m.mithrayanCount || 0}</strong></span>
+        </div>
+
+        <div class="kmp-card-actions" onclick="event.stopPropagation()">
+          ${actionBtnHtml}
+          <button type="button" class="kmp-btn-view-profile" onclick="openMemberProfileModal('${m.uid}', '${Security.escapeHTML(m.name)}')" title="සම්පූර්ණ පැතිකඩ (Profile) බලන්න">
+            <i class="fa-solid fa-user"></i>
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+};
+
+window.handleSendKmpRequest = async function(targetUid, targetName) {
+  await handleSendMithra(targetUid, targetName);
+  renderKmpDirectoryView(true);
+};
+
+window.handleAcceptKmpRequest = async function(notifId, senderUid, senderName) {
+  await handleAcceptMithra(notifId, senderUid, senderName);
+  renderKmpDirectoryView(true);
+};
+
+window.handleRejectKmpRequest = async function(notifId, senderUid) {
+  await handleRejectMithra(notifId, senderUid);
+  renderKmpDirectoryView(true);
 };
 
 // ============================================================================
@@ -7271,6 +7702,9 @@ window.handleSendMithra = async function(targetUid, targetName) {
     if (activeTab === 'profile') {
       renderProfileView();
     }
+    if (activeTab === 'friends') {
+      renderKmpDirectoryView(true);
+    }
     updateUserInfoUI();
   } catch (err) {
     console.error('Failed to send Kalyana Mithra request:', err);
@@ -7321,6 +7755,9 @@ window.handleAcceptMithra = async function(notifId, senderUid, senderName) {
     if (activeTab === 'profile') {
       renderProfileView();
     }
+    if (activeTab === 'friends') {
+      renderKmpDirectoryView(true);
+    }
     updateUserInfoUI();
   } catch (err) {
     console.error('Failed to accept Kalyana Mithra request:', err);
@@ -7354,6 +7791,9 @@ window.handleRejectMithra = async function(notifId, senderUid, senderName) {
     if (activeTab === 'profile') {
       renderProfileView();
     }
+    if (activeTab === 'friends') {
+      renderKmpDirectoryView(true);
+    }
     updateUserInfoUI();
   } catch (err) {
     console.warn('Reject mithra note:', err);
@@ -7379,6 +7819,9 @@ window.handleRemoveMithra = async function(targetUid) {
     // Re-render profile friends subtab if active
     if (activeTab === 'profile') {
       renderProfileView();
+    }
+    if (activeTab === 'friends') {
+      renderKmpDirectoryView(true);
     }
     updateUserInfoUI();
   } catch (err) {
@@ -8325,7 +8768,7 @@ function initPWAEngine() {
   const isIos = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase()) && !window.MSStream;
 
   // Purge any stale caches from previous builds
-  const ACTIVE_BUILD = 'v105';
+  const ACTIVE_BUILD = 'v106';
   if (localStorage.getItem('pinPotha_active_build') !== ACTIVE_BUILD) {
     localStorage.setItem('pinPotha_active_build', ACTIVE_BUILD);
     if ('caches' in window) {
@@ -8342,7 +8785,7 @@ function initPWAEngine() {
   // Register Service Worker
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js?v=105', { updateViaCache: 'none' })
+      navigator.serviceWorker.register('./sw.js?v=106', { updateViaCache: 'none' })
         .then((registration) => {
           // Immediately check for service worker updates
           try { registration.update(); } catch (e) {}

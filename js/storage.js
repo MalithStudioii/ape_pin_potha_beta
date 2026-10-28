@@ -297,6 +297,8 @@ export const StorageService = {
           if (isMemberSangha) {
             this._knownSanghaUids.add(docSnap.id);
           }
+          const lastActive = data.lastActiveAt || data.updatedAt || 0;
+          const isOnline = (this.currentUser && this.currentUser.uid === docSnap.id) || ((now - lastActive) < 15 * 60 * 1000);
           members.push({
             uid: docSnap.id,
             name: data.name || data.firstName || 'කල්‍යාණ මිත්‍ර',
@@ -305,10 +307,13 @@ export const StorageService = {
             location: data.location || data.district || '',
             joinedDate: data.joinedDate || '',
             updatedAt: data.updatedAt || 0,
+            lastActiveAt: lastActive,
+            isOnline: isOnline,
             isAdmin: isMaster,
             isSubAdmin: isSub,
             isSangha: isMemberSangha,
-            role: data.role || (isMemberSangha ? 'sangha' : (isSub ? 'admin' : 'member'))
+            role: data.role || (isMemberSangha ? 'sangha' : (isSub ? 'admin' : 'member')),
+            mithrayanCount: Array.isArray(data.mithrayan) ? data.mithrayan.length : 0
           });
         });
       } catch (e) {
@@ -321,6 +326,7 @@ export const StorageService = {
       const map = new Map();
       posts.forEach(p => {
         if (p.uid && !map.has(p.uid)) {
+          const isSelf = this.currentUser && this.currentUser.uid === p.uid;
           map.set(p.uid, {
             uid: p.uid,
             name: p.author || 'කල්‍යාණ මිත්‍ර',
@@ -329,9 +335,12 @@ export const StorageService = {
             location: p.location || '',
             joinedDate: '2026',
             updatedAt: p.timestamp || 0,
+            lastActiveAt: isSelf ? now : (p.timestamp || (now - 3600000)),
+            isOnline: isSelf || ((now - (p.timestamp || 0)) < 24 * 3600 * 1000),
             isAdmin: false,
             isSangha: p.isSangha || p.authorRole === 'sangha' || this.isSangha({ name: p.author }),
-            role: (p.isSangha || p.authorRole === 'sangha') ? 'sangha' : 'member'
+            role: (p.isSangha || p.authorRole === 'sangha') ? 'sangha' : 'member',
+            mithrayanCount: 0
           });
         }
       });
@@ -343,12 +352,28 @@ export const StorageService = {
           bio: this.currentUser.bio || '',
           location: this.currentUser.location || '',
           joinedDate: this.currentUser.joinedDate || '2026',
-          updatedAt: Date.now(),
-          isAdmin: this.isMasterAdmin()
+          updatedAt: now,
+          lastActiveAt: now,
+          isOnline: true,
+          isAdmin: this.isMasterAdmin(),
+          isSangha: this.isSangha(this.currentUser),
+          role: this.isSangha(this.currentUser) ? 'sangha' : (this.isMasterAdmin() ? 'admin' : 'member'),
+          mithrayanCount: Array.isArray(this.currentUser.mithrayan) ? this.currentUser.mithrayan.length : 0
         });
       }
       members = Array.from(map.values());
     }
+
+    // Attach posts count & sadhu count from posts cache
+    const allLocalPosts = this.getLocalPosts();
+    members.forEach(m => {
+      const userPosts = allLocalPosts.filter(p => p.uid === m.uid);
+      m.postsCount = userPosts.length;
+      m.totalSadhu = userPosts.reduce((acc, p) => acc + (p.sadhuCount || 0), 0);
+      if (this.currentUser && m.uid === this.currentUser.uid) {
+        m.isOnline = true;
+      }
+    });
 
     // Sort by latest update or creation
     members.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
@@ -356,6 +381,26 @@ export const StorageService = {
     this._cachedCommunityMembers = members;
     this._lastCommunityMembersFetchTime = now;
     return members;
+  },
+
+  /**
+   * Keep user presence updated in Firestore & local state
+   */
+  async updateUserPresence() {
+    if (!this.currentUser || !this.currentUser.uid) return;
+    const now = Date.now();
+    this.currentUser.lastActiveAt = now;
+    try {
+      localStorage.setItem('pinPotha_last_presence', now.toString());
+    } catch (e) {}
+    if (isCloudReady && db) {
+      try {
+        const { doc, updateDoc } = await import('https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js');
+        await updateDoc(doc(db, COLLECTIONS.USERS, this.currentUser.uid), {
+          lastActiveAt: now
+        }).catch(() => {});
+      } catch (e) {}
+    }
   },
 
   /**
