@@ -253,13 +253,21 @@ const COVER_PRESETS = [
 ];
 
 // Initialize Application
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', () => {
   initSmartHeaderScroll();
   initMobileBottomBarLock();
-  const initResult = await StorageService.init();
-  updateCloudBanner(initResult.isCloud);
+
+  // 1. INSTANT ZERO-LATENCY PAINT:
+  // Render immediately from localStorage so users see the feed instantaneously in <50ms!
+  currentPostsData = StorageService.getLocalPosts() || [];
+  window.currentPostsData = currentPostsData;
+  if (currentPostsData.length > 0) {
+    renderFeed();
+  }
   updateUserInfoUI();
-  updateCommunityMemberCount();
+  updateUserStats();
+  renderSideNeeds();
+  renderPcSidebarMembers();
 
   // Load initial global announcement, daily verse, and Poya calendar from storage
   const initialAnnounce = StorageService.getAdminAnnouncement();
@@ -270,14 +278,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const initialPoya = StorageService.getPoyaEvent();
   if (initialPoya) renderPoyaUI(initialPoya);
-
-  // Pre-load local posts so feed is ready instantaneously on initial paint
-  currentPostsData = StorageService.getLocalPosts() || [];
-  window.currentPostsData = currentPostsData;
-  renderFeed();
-  renderSideNeeds();
-  renderPcSidebarMembers();
-  updateUserStats();
 
   // Subscribe to real-time database updates
   StorageService.onPostsUpdate((posts) => {
@@ -334,7 +334,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   setupEventListeners();
   initPWAEngine();
-  initPresenceEngine();
+
+  // 2. ASYNC BACKGROUND CLOUD BOOTSTRAP:
+  // Connect to Firestore asynchronously in background without freezing UI or delay
+  StorageService.init().then((initResult) => {
+    updateCloudBanner(initResult.isCloud);
+    updateUserInfoUI();
+    updateCommunityMemberCount();
+    initPresenceEngine();
+  }).catch((err) => {
+    console.warn('[Storage] Background init error:', err);
+  });
 
   // Initialize browser history state for mobile back button navigation
   try {
@@ -1480,7 +1490,7 @@ window.handleShortsUploadSubmit = async function(e) {
     alert("දෝෂයකි: " + err.message);
   } finally {
     if (submitBtn) submitBtn.disabled = false;
-    if (submitBtnText) submitBtnText.innerHTML = 'පුණ්‍ය දැක්මට එක් කරන්න';
+    if (submitBtnText) submitBtnText.innerHTML = 'Reels වෙත එක් කරන්න';
   }
 };
 
@@ -1494,7 +1504,7 @@ function renderPostVideo(post) {
 
   return `
     <div class="post-video-container ${containerClass}" id="video-container-${post.id}">
-      <div class="video-facade" onclick="openReelsViewer('${post.id}')" style="cursor: pointer;" title="පුණ්‍ය දැක්ම තුළ නරඹන්න">
+      <div class="video-facade" onclick="openReelsViewer('${post.id}')" style="cursor: pointer;" title="Reels තුළ නරඹන්න">
         <img src="${thumbUrl}" class="video-facade-thumb" alt="${Security.escapeHTML(post.title || 'Video')}" loading="lazy">
         <div class="video-facade-overlay">
           <div class="video-facade-top-badge">
@@ -1503,15 +1513,15 @@ function renderPostVideo(post) {
           </div>
 
           <div class="video-facade-play-center">
-            <div class="glowing-play-btn" title="පුණ්‍ය දැක්මෙන් නරඹන්න">
+            <div class="glowing-play-btn" title="Reels ලෙස නරඹන්න">
               <i class="fa-solid fa-play"></i>
             </div>
           </div>
 
           <div class="video-facade-bottom-actions">
-            <button type="button" class="video-reels-btn" onclick="event.stopPropagation(); openReelsViewer('${post.id}')" title="පුණ්‍ය දැක්ම තුළ සම්පූර්ණ තිරයෙන් නරඹන්න">
+            <button type="button" class="video-reels-btn" onclick="event.stopPropagation(); openReelsViewer('${post.id}')" title="Reels ලෙස සම්පූර්ණ තිරයෙන් නරඹන්න">
               <i class="fa-solid fa-expand"></i>
-              <span>පුණ්‍ය දැක්මෙන් බලන්න</span>
+              <span>Reels ලෙස බලන්න</span>
             </button>
           </div>
         </div>
@@ -4927,7 +4937,7 @@ window.handleReelShare = async function(postId, btnEl) {
                (StorageService.getLocalPosts() || []).find(p => p.id === postId);
 
   const shareTitle = reel?.title || 'අපේ පින් පොත - පුණ්‍ය දැක්ම';
-  const shareText = `ධර්ම කරුණක් / පින්කමක් නරඹන්න: ${reel?.title || 'පුණ්‍ය දැක්ම Shorts'}`;
+  const shareText = `ධර්ම කරුණක් / පින්කමක් නරඹන්න: ${reel?.title || 'දහම් Reels'}`;
   const shareUrl = `${window.location.origin}${window.location.pathname}?post=${encodeURIComponent(postId)}`;
 
   // Increment share count atomically
@@ -8842,7 +8852,7 @@ function initPWAEngine() {
   const isIos = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase()) && !window.MSStream;
 
   // Purge any stale caches from previous builds
-  const ACTIVE_BUILD = 'v107';
+  const ACTIVE_BUILD = 'v108';
   if (localStorage.getItem('pinPotha_active_build') !== ACTIVE_BUILD) {
     localStorage.setItem('pinPotha_active_build', ACTIVE_BUILD);
     if ('caches' in window) {
@@ -8859,7 +8869,7 @@ function initPWAEngine() {
   // Register Service Worker
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js?v=107', { updateViaCache: 'none' })
+      navigator.serviceWorker.register('./sw.js?v=108', { updateViaCache: 'none' })
         .then((registration) => {
           // Immediately check for service worker updates
           try { registration.update(); } catch (e) {}
