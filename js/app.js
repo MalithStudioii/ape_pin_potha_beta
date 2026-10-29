@@ -4,8 +4,8 @@
  * ============================================================================
  */
 
-import { StorageService } from './storage.js?v=104';
-import { Security } from './security.js?v=97';
+import { StorageService } from './storage.js?v=120';
+import { Security } from './security.js?v=120';
 import { uploadToImgBB } from './imgbb-service.js?v=66';
 import { SoundService, triggerHaptic } from './sound.js?v=66';
 import { FeedAlgorithm } from './algorithm.js?v=66';
@@ -298,6 +298,7 @@ function bootApp() {
     } else if (hasRenderedCards && prevIds.length > 0 && newIds !== prevIds && newIds.startsWith(prevIds)) {
       // Posts were appended at the bottom via pagination! Smooth append without resetting DOM or scroll position
       appendNewPostsToFeed(posts, prevIds);
+      updateFeedInPlace(currentPostsData);
     } else {
       renderFeed();
     }
@@ -1308,7 +1309,7 @@ function renderPostImagesCollage(post) {
       <div class="photo-collage-container" data-post-id="${post.id}" onclick="openPostLightbox('${post.id}', 0, this)" role="button" tabindex="0" style="cursor: pointer;">
         <div class="collage-grid collage-1">
           <div class="collage-item" data-index="0" onclick="event.stopPropagation(); openPostLightbox('${post.id}', 0, this)" role="button" tabindex="0" style="cursor: pointer;">
-            <img src="${cleanImages[0]}" alt="${Security.escapeHTML(post.title || '')}" onclick="event.stopPropagation(); openPostLightbox('${post.id}', 0, this)" loading="lazy" role="button" style="cursor: pointer;">
+            <img src="${cleanImages[0]}" alt="${Security.escapeHTML(post.title || '')}" onclick="event.stopPropagation(); openPostLightbox('${post.id}', 0, this)" decoding="async" role="button" style="cursor: pointer;">
           </div>
         </div>
       </div>
@@ -1322,7 +1323,7 @@ function renderPostImagesCollage(post) {
         <div class="collage-grid collage-2">
           ${cleanImages.map((img, i) => `
             <div class="collage-item" data-index="${i}" onclick="event.stopPropagation(); openPostLightbox('${post.id}', ${i}, this)" role="button" tabindex="0" style="cursor: pointer;">
-              <img src="${img}" alt="ඡායාරූපය ${i+1}" onclick="event.stopPropagation(); openPostLightbox('${post.id}', ${i}, this)" loading="lazy" role="button" style="cursor: pointer;">
+              <img src="${img}" alt="ඡායාරූපය ${i+1}" onclick="event.stopPropagation(); openPostLightbox('${post.id}', ${i}, this)" decoding="async" role="button" style="cursor: pointer;">
             </div>
           `).join('')}
         </div>
@@ -1337,7 +1338,7 @@ function renderPostImagesCollage(post) {
         <div class="collage-grid collage-3">
           ${cleanImages.map((img, i) => `
             <div class="collage-item" data-index="${i}" onclick="event.stopPropagation(); openPostLightbox('${post.id}', ${i}, this)" role="button" tabindex="0" style="cursor: pointer;">
-              <img src="${img}" alt="ඡායාරූපය ${i+1}" onclick="event.stopPropagation(); openPostLightbox('${post.id}', ${i}, this)" loading="lazy" role="button" style="cursor: pointer;">
+              <img src="${img}" alt="ඡායාරූපය ${i+1}" onclick="event.stopPropagation(); openPostLightbox('${post.id}', ${i}, this)" decoding="async" role="button" style="cursor: pointer;">
             </div>
           `).join('')}
         </div>
@@ -1352,7 +1353,7 @@ function renderPostImagesCollage(post) {
         <div class="collage-grid collage-4">
           ${cleanImages.map((img, i) => `
             <div class="collage-item" data-index="${i}" onclick="event.stopPropagation(); openPostLightbox('${post.id}', ${i}, this)" role="button" tabindex="0" style="cursor: pointer;">
-              <img src="${img}" alt="ඡායාරූපය ${i+1}" onclick="event.stopPropagation(); openPostLightbox('${post.id}', ${i}, this)" loading="lazy" role="button" style="cursor: pointer;">
+              <img src="${img}" alt="ඡායාරූපය ${i+1}" onclick="event.stopPropagation(); openPostLightbox('${post.id}', ${i}, this)" decoding="async" role="button" style="cursor: pointer;">
             </div>
           `).join('')}
         </div>
@@ -2110,6 +2111,52 @@ function renderPostCardHTML(post, user) {
 function updateFeedInPlace(posts) {
   const user = StorageService.currentUser;
   (posts || []).forEach(post => {
+    if (!post || !post.id) return;
+    const postEl = document.getElementById(`post-elem-${post.id}`);
+    if (postEl) {
+      // 1. In-place Media injection & synchronization
+      const hasImages = (Array.isArray(post.images) && post.images.length > 0) || Boolean(post.image);
+      const existingCollage = postEl.querySelector('.photo-collage-container');
+      const existingVideo = postEl.querySelector('.post-video-container');
+
+      if (hasImages && !existingCollage && !post.videoId) {
+        const collageHtml = renderPostImagesCollage(post);
+        if (collageHtml) {
+          const actionsGrid = postEl.querySelector('.post-actions-grid');
+          if (actionsGrid) {
+            const temp = document.createElement('div');
+            temp.innerHTML = collageHtml.trim();
+            if (temp.firstElementChild) {
+              postEl.insertBefore(temp.firstElementChild, actionsGrid);
+            }
+          }
+        }
+      } else if (post.videoId && !existingVideo) {
+        const videoHtml = renderPostVideo(post);
+        if (videoHtml) {
+          const actionsGrid = postEl.querySelector('.post-actions-grid');
+          if (actionsGrid) {
+            const temp = document.createElement('div');
+            temp.innerHTML = videoHtml.trim();
+            if (temp.firstElementChild) {
+              postEl.insertBefore(temp.firstElementChild, actionsGrid);
+            }
+          }
+        }
+      } else if (hasImages && existingCollage) {
+        const rawImgs = (Array.isArray(post.images) && post.images.length > 0) ? post.images : (post.image ? [post.image] : []);
+        const cleanImgs = rawImgs.map(img => Security.sanitizeUrl(img) || img).filter(Boolean);
+        if (typeof window !== 'undefined') {
+          window._postImagesMap = window._postImagesMap || {};
+          window._postImagesMap[String(post.id)] = cleanImgs;
+        }
+        const firstImg = existingCollage.querySelector('img');
+        if (firstImg && cleanImgs[0] && firstImg.getAttribute('src') !== cleanImgs[0]) {
+          firstImg.src = cleanImgs[0];
+        }
+      }
+    }
+
     const confirmedCount = Math.max(0, parseInt(post.sadhuCount, 10) || 0);
     const countEl = document.getElementById(`count-${post.id}`);
     const btnCountEl = document.getElementById(`count-btn-${post.id}`);

@@ -108,18 +108,20 @@ export const StorageService = {
     this._dummyPurged = true;
     try {
       // 1. Purge from local storage feed caches
-      ['pinKetha_posts', 'pinPotha_posts', 'pinPotha_sandbox_posts'].forEach(key => {
-        const raw = localStorage.getItem(key);
-        if (raw) {
-          try {
-            const list = JSON.parse(raw);
-            if (Array.isArray(list)) {
-              const cleaned = list.filter(p => !this.isDummyTestPost(p));
-              localStorage.setItem(key, JSON.stringify(cleaned));
-            }
-          } catch(e) {}
-        }
+      ['pinKetha_posts', 'pinPotha_sandbox_posts'].forEach(key => {
+        try { localStorage.removeItem(key); } catch(e) {}
       });
+      const raw = localStorage.getItem('pinPotha_posts');
+      if (raw) {
+        try {
+          const list = JSON.parse(raw);
+          if (Array.isArray(list)) {
+            const cleaned = list.filter(p => !this.isDummyTestPost(p));
+            localStorage.setItem('pinPotha_posts', JSON.stringify(cleaned));
+          }
+        } catch(e) {}
+      }
+    } catch (e) {}
 
       // 2. Mark dummy seed IDs as deleted locally so no component can ever display them
       const localDeleted = this.getDeletedPostIds();
@@ -777,20 +779,13 @@ export const StorageService = {
     }
 
     try {
-      const rawSandbox = localStorage.getItem('pinPotha_sandbox_posts');
-      const rawPosts = localStorage.getItem('pinPotha_posts');
+      const rawPosts = localStorage.getItem('pinPotha_posts') || localStorage.getItem('pinPotha_sandbox_posts');
       let combined = [];
 
-      if (rawSandbox) {
-        try {
-          const list = JSON.parse(rawSandbox);
-          if (Array.isArray(list)) combined = combined.concat(list);
-        } catch (e) {}
-      }
       if (rawPosts) {
         try {
           const list = JSON.parse(rawPosts);
-          if (Array.isArray(list)) combined = combined.concat(list);
+          if (Array.isArray(list)) combined = list;
         } catch (e) {}
       }
 
@@ -831,22 +826,27 @@ export const StorageService = {
     this._loadedPosts = cleanPosts;
 
     try {
-      // Store up to 200 in localStorage so initial paint is instantaneous
-      const topCache = cleanPosts.slice(0, 200);
-      localStorage.setItem('pinPotha_sandbox_posts', JSON.stringify(topCache));
+      // Store top 25 posts in single localStorage key so initial paint is instantaneous without quota exhaustion
+      const topCache = cleanPosts.slice(0, 25);
       localStorage.setItem('pinPotha_posts', JSON.stringify(topCache));
+      localStorage.removeItem('pinPotha_sandbox_posts');
     } catch (e) {
-      console.warn('[Storage] LocalStorage quota reached, storing lightweight cache:', e);
+      console.warn('[Storage] LocalStorage quota reached, storing lightweight top-10 cache:', e);
       try {
-        const lightPosts = cleanPosts.slice(0, 60).map(p => ({
-          ...p,
-          image: p.image && String(p.image).startsWith('data:') ? null : p.image,
-          images: Array.isArray(p.images) ? p.images.filter(img => !String(img).startsWith('data:')) : []
-        }));
-        localStorage.setItem('pinPotha_sandbox_posts', JSON.stringify(lightPosts));
-        localStorage.setItem('pinPotha_posts', JSON.stringify(lightPosts));
+        const top10 = cleanPosts.slice(0, 10);
+        localStorage.setItem('pinPotha_posts', JSON.stringify(top10));
+        localStorage.removeItem('pinPotha_sandbox_posts');
       } catch (err2) {
-        console.warn('[Storage] Lightweight cache fallback also failed:', err2);
+        console.warn('[Storage] Fallback top 10 also failed, storing minimal metadata:', err2);
+        try {
+          const minimal = cleanPosts.slice(0, 8).map(p => ({
+            ...p,
+            image: (p.image && String(p.image).length > 60000) ? null : p.image,
+            images: Array.isArray(p.images) ? p.images.filter(img => String(img).length <= 60000) : (p.image ? [p.image] : [])
+          }));
+          localStorage.setItem('pinPotha_posts', JSON.stringify(minimal));
+          localStorage.removeItem('pinPotha_sandbox_posts');
+        } catch (err3) {}
       }
     }
   },
