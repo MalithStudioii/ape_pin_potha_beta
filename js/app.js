@@ -291,12 +291,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const container = document.getElementById('postsContainer');
     const hasRenderedCards = container && container.children.length > 0 && !container.querySelector('.feed-loading-shimmer');
 
-    if (hasRenderedCards && prevIds.length > 0 && newIds.startsWith(prevIds)) {
-      // Posts were appended at the bottom via pagination! Smooth append without resetting DOM or scroll position
-      appendNewPostsToFeed(posts, prevIds);
-    } else if (hasRenderedCards && prevIds === newIds && prevIds.length > 0) {
+    if (hasRenderedCards && prevIds.length > 0 && prevIds === newIds) {
       // In-place updates to prevent feed DOM teardown, scroll jump, and image flicker
       updateFeedInPlace(currentPostsData);
+    } else if (hasRenderedCards && prevIds.length > 0 && newIds !== prevIds && newIds.startsWith(prevIds)) {
+      // Posts were appended at the bottom via pagination! Smooth append without resetting DOM or scroll position
+      appendNewPostsToFeed(posts, prevIds);
     } else {
       renderFeed();
     }
@@ -1690,7 +1690,7 @@ function renderSingleCommentHTML(c, postId, user, index) {
 
 function renderCommentsListHTML(postId, comments, user) {
   if (!Array.isArray(comments) || comments.length === 0) {
-    return '';
+    return '<div class="empty-comments-hint" style="text-align: center; padding: 10px 8px; color: #94a3b8; font-size: 0.76rem; font-style: italic;">තවම ප්‍රාර්ථනා එක් කර නැත. පළමු සටහන එක් කරන්න 🙏</div>';
   }
   return comments.map((c, idx) => renderSingleCommentHTML(c, postId, user, idx)).join('');
 }
@@ -1698,6 +1698,9 @@ function renderCommentsListHTML(postId, comments, user) {
 function appendCommentToDOM(postId, newComment) {
   const listEl = document.getElementById(`comments-list-${postId}`);
   if (!listEl) return;
+
+  const emptyHint = listEl.querySelector('.empty-comments-hint');
+  if (emptyHint) emptyHint.remove();
 
   const commentKey = newComment.id;
   // If the comment was already rendered by reactive in-place sync, don't duplicate it!
@@ -1730,11 +1733,14 @@ function renderCommentsListContent(postId, comments) {
   if (!listEl) return;
   const user = StorageService.currentUser;
   listEl.innerHTML = renderCommentsListHTML(postId, comments, user);
+  try {
+    listEl.scrollTop = listEl.scrollHeight;
+  } catch (e) {}
 }
 
 function updatePostCommentCountUI(postId) {
   const allPosts = StorageService.getLocalPosts() || [];
-  const targetPost = allPosts.find(p => p.id === postId);
+  const targetPost = allPosts.find(p => String(p.id) === String(postId)) || (window.currentPostsData || []).find(p => String(p.id) === String(postId));
   const count = (targetPost && Array.isArray(targetPost.comments)) ? targetPost.comments.length : 0;
 
   const btnC = document.getElementById(`comments-btn-${postId}`);
@@ -2576,6 +2582,12 @@ window.toggleCommentsSection = function(postId) {
     const isHidden = (box.style.display === 'none' || window.getComputedStyle(box).display === 'none');
     if (isHidden) {
       box.style.display = 'block';
+      // Always freshly sync comments list when opening comments section
+      const allPosts = StorageService.getLocalPosts() || [];
+      const targetPost = allPosts.find(p => String(p.id) === String(postId)) || (window.currentPostsData || []).find(p => String(p.id) === String(postId));
+      if (targetPost && Array.isArray(targetPost.comments)) {
+        renderCommentsListContent(postId, targetPost.comments);
+      }
       setTimeout(() => {
         document.getElementById(`comment-input-${postId}`)?.focus();
       }, 100);
@@ -2602,7 +2614,11 @@ window.submitQuickBlessing = async function(postId, text) {
     triggerHaptic(20);
 
     const newComment = await StorageService.addComment(postId, text);
-    if (newComment) {
+    const allPosts = StorageService.getLocalPosts() || [];
+    let targetPost = allPosts.find(p => String(p.id) === String(postId)) || (window.currentPostsData || []).find(p => String(p.id) === String(postId));
+    if (targetPost && Array.isArray(targetPost.comments)) {
+      renderCommentsListContent(postId, targetPost.comments);
+    } else if (newComment) {
       appendCommentToDOM(postId, newComment);
     }
     updatePostCommentCountUI(postId);
@@ -2639,7 +2655,11 @@ window.handleCommentSubmit = async function(event, postId) {
     triggerHaptic(20);
 
     const newComment = await StorageService.addComment(postId, text);
-    if (newComment) {
+    const allPosts = StorageService.getLocalPosts() || [];
+    let targetPost = allPosts.find(p => String(p.id) === String(postId)) || (window.currentPostsData || []).find(p => String(p.id) === String(postId));
+    if (targetPost && Array.isArray(targetPost.comments)) {
+      renderCommentsListContent(postId, targetPost.comments);
+    } else if (newComment) {
       appendCommentToDOM(postId, newComment);
     }
     updatePostCommentCountUI(postId);
@@ -8906,7 +8926,7 @@ function initPWAEngine() {
   const isIos = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase()) && !window.MSStream;
 
   // Purge any stale caches from previous builds
-  const ACTIVE_BUILD = 'v113';
+  const ACTIVE_BUILD = 'v114';
   if (localStorage.getItem('pinPotha_active_build') !== ACTIVE_BUILD) {
     localStorage.setItem('pinPotha_active_build', ACTIVE_BUILD);
     if ('caches' in window) {

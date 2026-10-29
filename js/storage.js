@@ -491,7 +491,8 @@ export const StorageService = {
                 timestamp: normTimestamp,
                 isOfficial: isOfficial,
                 sadhuCount: sanitizedSadhu,
-                sadhuUsers: Array.isArray(data.sadhuUsers) ? data.sadhuUsers : []
+                sadhuUsers: Array.isArray(data.sadhuUsers) ? data.sadhuUsers : [],
+                comments: Array.isArray(data.comments) ? data.comments : []
               });
             }
           });
@@ -1958,15 +1959,41 @@ export const StorageService = {
     };
 
     const allPosts = this.getLocalPosts();
-    const targetPost = allPosts.find(p => p.id === postId);
+    let targetPost = allPosts.find(p => String(p.id) === String(postId));
+    if (!targetPost && Array.isArray(this._loadedPosts)) {
+      targetPost = this._loadedPosts.find(p => String(p.id) === String(postId));
+    }
 
     if (targetPost) {
       if (!Array.isArray(targetPost.comments)) targetPost.comments = [];
       targetPost.comments.push(commentObj);
       this._cachedPosts = allPosts;
       this.cacheLocal(allPosts);
-      this.notifyListeners(allPosts);
     }
+
+    // Also sync in-memory _loadedPosts
+    if (Array.isArray(this._loadedPosts)) {
+      const targetInLoaded = this._loadedPosts.find(p => String(p.id) === String(postId));
+      if (targetInLoaded) {
+        if (!Array.isArray(targetInLoaded.comments)) targetInLoaded.comments = [];
+        if (!targetInLoaded.comments.some(c => c.id === commentObj.id)) {
+          targetInLoaded.comments.push(commentObj);
+        }
+      }
+    }
+
+    // Also sync window.currentPostsData
+    if (typeof window !== 'undefined' && Array.isArray(window.currentPostsData)) {
+      const curTarget = window.currentPostsData.find(p => String(p.id) === String(postId));
+      if (curTarget) {
+        if (!Array.isArray(curTarget.comments)) curTarget.comments = [];
+        if (!curTarget.comments.some(c => c.id === commentObj.id)) {
+          curTarget.comments.push(commentObj);
+        }
+      }
+    }
+
+    this.notifyListeners(allPosts);
 
     if (isCloudReady && db) {
       try {
