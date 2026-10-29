@@ -104,6 +104,8 @@ export const StorageService = {
   },
 
     purgeDummyPostsFromStorage() {
+    if (this._dummyPurged) return;
+    this._dummyPurged = true;
     try {
       // 1. Purge from local storage feed caches
       ['pinKetha_posts', 'pinPotha_posts', 'pinPotha_sandbox_posts'].forEach(key => {
@@ -203,16 +205,32 @@ export const StorageService = {
   },
 
   /**
-   * Returns total registered community members count (Cloud aggregation with baseline)
+   * Returns total registered community members count (Cloud aggregation with baseline + caching)
    */
-  async getTotalMemberCount() {
+  async getTotalMemberCount(force = false) {
+    const now = Date.now();
+    try {
+      const raw = localStorage.getItem('pinPotha_total_members_cache');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (!force && parsed && parsed.count && (now - (parsed.time || 0) < 15 * 60 * 1000)) {
+          return parsed.count;
+        }
+      }
+    } catch (e) {}
+
+    let total = 0;
     if (isCloudReady && db) {
       try {
         const { collection, getCountFromServer } = await import('https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js');
         const snap = await getCountFromServer(collection(db, COLLECTIONS.USERS));
         const count = snap.data().count;
         if (typeof count === 'number' && count > 0) {
-          return count + 115;
+          total = count + 115;
+          try {
+            localStorage.setItem('pinPotha_total_members_cache', JSON.stringify({ count: total, time: now }));
+          } catch (e) {}
+          return total;
         }
       } catch (e) {
         console.warn('[Storage] Member count fetch note:', e);
@@ -220,7 +238,11 @@ export const StorageService = {
     }
     const allPosts = this.getLocalPosts();
     const uniqueUids = new Set(allPosts.map(p => p.uid).filter(Boolean));
-    return Math.max(uniqueUids.size + 115, 128);
+    total = Math.max(uniqueUids.size + 115, 128);
+    try {
+      localStorage.setItem('pinPotha_total_members_cache', JSON.stringify({ count: total, time: now }));
+    } catch (e) {}
+    return total;
   },
 
   _cachedCommunityMembers: null,
@@ -231,8 +253,23 @@ export const StorageService = {
    */
   async getAllCommunityMembers(forceRefresh = false) {
     const now = Date.now();
-    if (!forceRefresh && this._cachedCommunityMembers && this._cachedCommunityMembers.length > 20 && (now - this._lastCommunityMembersFetchTime < 30000)) {
+    if (!forceRefresh && this._cachedCommunityMembers && this._cachedCommunityMembers.length > 20 && (now - this._lastCommunityMembersFetchTime < 60000)) {
       return this._cachedCommunityMembers;
+    }
+
+    // Try instant local cache on startup
+    if (!this._cachedCommunityMembers && !forceRefresh) {
+      try {
+        const rawSaved = localStorage.getItem('pinPotha_cached_community_members');
+        if (rawSaved) {
+          const list = JSON.parse(rawSaved);
+          if (Array.isArray(list) && list.length > 10) {
+            this._cachedCommunityMembers = list;
+            this._lastCommunityMembersFetchTime = now - 45000;
+            return list;
+          }
+        }
+      } catch (e) {}
     }
 
     let members = [];
@@ -322,12 +359,24 @@ export const StorageService = {
       members = Array.from(map.values());
     }
 
-    // Attach posts count & sadhu count from posts cache
+    // Attach posts count & sadhu count from posts cache (Fast O(N) pre-indexed pass)
     const allLocalPosts = this.getLocalPosts();
+    const userStatsMap = new Map();
+    allLocalPosts.forEach(p => {
+      if (!p || !p.uid) return;
+      let stat = userStatsMap.get(p.uid);
+      if (!stat) {
+        stat = { count: 0, sadhu: 0 };
+        userStatsMap.set(p.uid, stat);
+      }
+      stat.count++;
+      stat.sadhu += (p.sadhuCount || 0);
+    });
+
     members.forEach(m => {
-      const userPosts = allLocalPosts.filter(p => p.uid === m.uid);
-      m.postsCount = userPosts.length;
-      m.totalSadhu = userPosts.reduce((acc, p) => acc + (p.sadhuCount || 0), 0);
+      const stat = userStatsMap.get(m.uid);
+      m.postsCount = stat ? stat.count : 0;
+      m.totalSadhu = stat ? stat.sadhu : 0;
       if (this.currentUser && m.uid === this.currentUser.uid) {
         m.isOnline = true;
       }
@@ -336,12 +385,12 @@ export const StorageService = {
     // Sort by latest update or creation
     members.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
 
-    if (isCloudReady && db && members.length > 0) {
+    if (members.length > 0) {
       this._cachedCommunityMembers = members;
       this._lastCommunityMembersFetchTime = now;
-    } else if (!this._cachedCommunityMembers || this._cachedCommunityMembers.length < members.length) {
-      this._cachedCommunityMembers = members;
-      this._lastCommunityMembersFetchTime = 0;
+      try {
+        localStorage.setItem('pinPotha_cached_community_members', JSON.stringify(members.slice(0, 50)));
+      } catch (e) {}
     }
     return members;
   },
@@ -471,9 +520,6 @@ export const StorageService = {
           snapshot.forEach((doc) => {
             const data = doc.data();
             if (this.isDummyTestPost({ id: doc.id, ...data })) {
-              if (this.isMasterAdmin()) {
-                this.deletePost(doc.id).catch(() => {});
-              }
               return; // Exclude dummy test posts from feed stream
             }
             const isOfficial = this.isOfficialPost(data);

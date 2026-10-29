@@ -530,8 +530,6 @@ function updateUserInfoUI() {
     else drawerStatusEl.textContent = 'කල්‍යාණ මිත්‍ර සාමාජික';
   }
 
-  updateCommunityMemberCount();
-
   // Update Kalyana Mithra pending request badges
   const notifs = StorageService.getLocalNotifications() || [];
   const pendingMithraReqs = notifs.filter(n =>
@@ -7006,8 +7004,10 @@ export async function updateCommunityMemberCount() {
       counterPill.setAttribute('title', `කල්‍යාණ මිතුරු පවුර (${formatted} දෙනෙක්)`);
     }
 
-    // Refresh PC right sidebar members preview
-    renderPcSidebarMembers();
+    // Refresh PC right sidebar members preview if on desktop
+    if (window.innerWidth > 992 && document.getElementById('pcSidebarMemberList')) {
+      renderPcSidebarMembers();
+    }
   } catch (err) {
     console.warn('[App] Update community member count warning:', err);
   }
@@ -8992,7 +8992,7 @@ function initPWAEngine() {
   const isIos = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase()) && !window.MSStream;
 
   // Purge any stale caches from previous builds
-  const ACTIVE_BUILD = 'v117';
+  const ACTIVE_BUILD = 'v119';
   if (localStorage.getItem('pinPotha_active_build') !== ACTIVE_BUILD) {
     localStorage.setItem('pinPotha_active_build', ACTIVE_BUILD);
     if ('caches' in window) {
@@ -9009,7 +9009,7 @@ function initPWAEngine() {
   // Register Service Worker
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js?v=108', { updateViaCache: 'none' })
+      navigator.serviceWorker.register('./sw.js?v=119', { updateViaCache: 'none' })
         .then((registration) => {
           // Immediately check for service worker updates
           try { registration.update(); } catch (e) {}
