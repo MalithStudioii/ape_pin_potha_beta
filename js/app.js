@@ -958,9 +958,10 @@ window.switchTab = function(tab, pushHistory = true) {
   const profileContainer = document.getElementById('profilePageContainer');
   const aranyaContainer = document.getElementById('aranyaPageContainer');
   const friendsContainer = document.getElementById('friendsPageContainer');
+  const policiesContainer = document.getElementById('policiesPageContainer');
   const banner = document.getElementById('tabHeaderBanner');
 
-    if (tab === 'policies') {
+  if (tab === 'policies') {
     stopKmpLivePolling();
     if (feedLayout) {
       feedLayout.classList.add('hidden');
@@ -973,6 +974,10 @@ window.switchTab = function(tab, pushHistory = true) {
     if (aranyaContainer) {
       aranyaContainer.classList.add('hidden');
       aranyaContainer.style.setProperty('display', 'none', 'important');
+    }
+    if (policiesContainer) {
+      policiesContainer.classList.add('hidden');
+      policiesContainer.style.setProperty('display', 'none', 'important');
     }
     if (friendsContainer) {
       friendsContainer.classList.add('hidden');
@@ -991,11 +996,6 @@ window.switchTab = function(tab, pushHistory = true) {
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
     return;
-  } else {
-    if (policiesContainer) {
-      policiesContainer.classList.add('hidden');
-      policiesContainer.style.setProperty('display', 'none', 'important');
-    }
   }
 
   if (tab === 'profile') {
@@ -1010,6 +1010,10 @@ window.switchTab = function(tab, pushHistory = true) {
     if (friendsContainer) {
       friendsContainer.classList.add('hidden');
       friendsContainer.style.setProperty('display', 'none', 'important');
+    }
+    if (policiesContainer) {
+      policiesContainer.classList.add('hidden');
+      policiesContainer.style.setProperty('display', 'none', 'important');
     }
     if (profileContainer) {
       profileContainer.classList.remove('hidden');
@@ -1039,6 +1043,10 @@ window.switchTab = function(tab, pushHistory = true) {
     if (friendsContainer) {
       friendsContainer.classList.add('hidden');
       friendsContainer.style.setProperty('display', 'none', 'important');
+    }
+    if (policiesContainer) {
+      policiesContainer.classList.add('hidden');
+      policiesContainer.style.setProperty('display', 'none', 'important');
     }
     if (aranyaContainer) {
       aranyaContainer.classList.remove('hidden');
@@ -1105,6 +1113,10 @@ window.switchTab = function(tab, pushHistory = true) {
   if (friendsContainer) {
     friendsContainer.classList.add('hidden');
     friendsContainer.style.setProperty('display', 'none', 'important');
+  }
+  if (policiesContainer) {
+    policiesContainer.classList.add('hidden');
+    policiesContainer.style.setProperty('display', 'none', 'important');
   }
 
   // Context banner
@@ -8894,7 +8906,7 @@ function initPWAEngine() {
   const isIos = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase()) && !window.MSStream;
 
   // Purge any stale caches from previous builds
-  const ACTIVE_BUILD = 'v110';
+  const ACTIVE_BUILD = 'v111';
   if (localStorage.getItem('pinPotha_active_build') !== ACTIVE_BUILD) {
     localStorage.setItem('pinPotha_active_build', ACTIVE_BUILD);
     if ('caches' in window) {
@@ -9769,4 +9781,55 @@ window.submitAranyaSuggestion = async function(e) {
       btn.innerHTML = origHtml;
     }
   }
+};
+
+
+// ============================================================================
+// Policies & About Ape Pin Potha Controller
+// ============================================================================
+window.switchPoliciesSubTab = function(subTabName = 'about') {
+  triggerHaptic(10);
+  const tabs = ['about', 'privacy', 'terms', 'settings'];
+  tabs.forEach(t => {
+    const btn = document.getElementById(`pol-tab-${t}`);
+    const content = document.getElementById(`policiesContent${t.charAt(0).toUpperCase() + t.slice(1)}`);
+    if (btn) {
+      if (t === subTabName) btn.classList.add('active');
+      else btn.classList.remove('active');
+    }
+    if (content) {
+      if (t === subTabName) {
+        content.classList.remove('hidden');
+        content.style.setProperty('display', 'block', 'important');
+      } else {
+        content.classList.add('hidden');
+        content.style.setProperty('display', 'none', 'important');
+      }
+    }
+  });
+
+  // If settings subtab is active, sync sound checkbox and user data
+  if (subTabName === 'settings') {
+    const polSound = document.getElementById('chkPoliciesSoundEffects');
+    if (polSound && typeof SoundService !== 'undefined') {
+      polSound.checked = SoundService.getSoundEnabled();
+    }
+    const user = StorageService.currentUser;
+    const nameEl = document.getElementById('policiesUserName');
+    const emailEl = document.getElementById('policiesUserEmail');
+    if (nameEl && user) nameEl.textContent = user.name || 'පින්වත් කල්‍යාණ මිත්‍රයෙක්';
+    if (emailEl && user) emailEl.textContent = user.email || 'Google ගිණුම සම්බන්ධ කර නැත';
+  }
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+window.togglePoliciesSound = function(e) {
+  const enabled = e.target.checked;
+  if (typeof SoundService !== 'undefined') {
+    SoundService.setSoundEnabled(enabled);
+    if (enabled) SoundService.playClick();
+  }
+  const otherChk = document.getElementById('chkSoundEffects');
+  if (otherChk) otherChk.checked = enabled;
 };
