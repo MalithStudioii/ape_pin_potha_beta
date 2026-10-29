@@ -8906,7 +8906,7 @@ function initPWAEngine() {
   const isIos = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase()) && !window.MSStream;
 
   // Purge any stale caches from previous builds
-  const ACTIVE_BUILD = 'v112';
+  const ACTIVE_BUILD = 'v113';
   if (localStorage.getItem('pinPotha_active_build') !== ACTIVE_BUILD) {
     localStorage.setItem('pinPotha_active_build', ACTIVE_BUILD);
     if ('caches' in window) {
@@ -9823,7 +9823,7 @@ window.switchPoliciesSubTab = function(subTabName = 'about') {
   centerActiveTab();
   setTimeout(centerActiveTab, 80);
 
-  // If settings subtab is active, sync sound checkbox and user data
+  // If settings subtab is active, sync sound checkbox, avatar logo and user data
   if (subTabName === 'settings') {
     const polSound = document.getElementById('chkPoliciesSoundEffects');
     if (polSound && typeof SoundService !== 'undefined') {
@@ -9832,8 +9832,17 @@ window.switchPoliciesSubTab = function(subTabName = 'about') {
     const user = StorageService.currentUser;
     const nameEl = document.getElementById('policiesUserName');
     const emailEl = document.getElementById('policiesUserEmail');
+    const avatarEl = document.getElementById('policiesUserAvatar');
     if (nameEl && user) nameEl.textContent = user.name || 'පින්වත් කල්‍යාණ මිත්‍රයෙක්';
     if (emailEl && user) emailEl.textContent = user.email || 'Google ගිණුම සම්බන්ධ කර නැත';
+    if (avatarEl && user) {
+      const firstLetter = (user.name || 'අ').trim().charAt(0);
+      if (user.photo) {
+        avatarEl.innerHTML = `<img src="${user.photo}" alt="${user.name}" style="width: 100%; height: 100%; border-radius: 9999px; object-fit: cover; display: block;" onerror="this.parentElement.innerText='${firstLetter}';">`;
+      } else {
+        avatarEl.innerText = firstLetter;
+      }
+    }
   }
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
