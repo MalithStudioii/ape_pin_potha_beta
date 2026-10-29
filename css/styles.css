@@ -8847,6 +8847,8 @@ html, body {
   .aranya-grid {
     grid-template-columns: 1fr;
   }
+}
+
 /* ==========================================================================
    Native Mobile App Slide Drawer Menu (Right Slide-In)
    ========================================================================== */

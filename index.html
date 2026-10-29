@@ -56,7 +56,7 @@
     <!-- Immediate Service Worker & Cache Invalidation Script -->
     <script>
       (function() {
-        var v = 'v115';
+        var v = 'v116';
         if (localStorage.getItem('pinPotha_active_build') !== v) {
           localStorage.setItem('pinPotha_active_build', v);
           if ('caches' in window) {
@@ -468,7 +468,7 @@
                 </div>
 
                 <!-- View All Full Directory Button -->
-                <button type="button" class="btn-sidebar-view-all" onclick="openFriendsViewWithTab('all')" title="සියලුම කල්‍යාණ මිතුරන් නාමාවලිය බලන්න">
+                <button type="button" class="btn-sidebar-view-all" onclick="switchTab('friends')" title="සියලුම කල්‍යාණ මිතුරන් නාමාවලිය බලන්න">
                     <span>සියලු සාමාජිකයින් බලන්න</span>
                     <i class="fa-solid fa-chevron-right" style="font-size: 0.75rem;"></i>
                 </button>

@@ -339,11 +339,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 2. ASYNC BACKGROUND CLOUD BOOTSTRAP:
   // Connect to Firestore asynchronously in background without freezing UI or delay
-  StorageService.init().then((initResult) => {
+  StorageService.init().then(async (initResult) => {
     updateCloudBanner(initResult.isCloud);
     updateUserInfoUI();
     updateCommunityMemberCount();
     initPresenceEngine();
+    if (initResult.isCloud) {
+      await renderPcSidebarMembers('', true);
+    }
   }).catch((err) => {
     console.warn('[Storage] Background init error:', err);
   });
@@ -1078,6 +1081,10 @@ window.switchTab = function(tab, pushHistory = true) {
       aranyaContainer.classList.add('hidden');
       aranyaContainer.style.setProperty('display', 'none', 'important');
     }
+    if (policiesContainer) {
+      policiesContainer.classList.add('hidden');
+      policiesContainer.style.setProperty('display', 'none', 'important');
+    }
     if (friendsContainer) {
       friendsContainer.classList.remove('hidden');
       friendsContainer.style.setProperty('display', 'block', 'important');
@@ -1085,7 +1092,7 @@ window.switchTab = function(tab, pushHistory = true) {
     if (banner) banner.style.display = 'none';
 
     try {
-      renderKmpDirectoryView();
+      renderKmpDirectoryView(true);
     } catch (err) {
       console.error('[KMP] Error rendering friends view:', err);
     }
@@ -7034,7 +7041,7 @@ window.openFriendsView = function(segment = 'my') {
 };
 
 window.openFriendsViewWithTab = function(segment) {
-  openFriendsView(segment);
+  switchTab('friends');
 };
 
 window.switchFriendsSegment = function(seg) {
@@ -7209,13 +7216,13 @@ window.filterDirectoryBy = function(type) {
   renderCommunityDirectory(list);
 };
 
-window.renderPcSidebarMembers = async function(filterQuery = '') {
+window.renderPcSidebarMembers = async function(filterQuery = '', forceRefresh = false) {
   const container = document.getElementById('pcSidebarMemberList');
   const countPill = document.getElementById('pcCommunityCountPill');
   if (!container) return;
 
-  if (allCommunityMembersCache.length === 0) {
-    allCommunityMembersCache = await StorageService.getAllCommunityMembers();
+  if (forceRefresh || allCommunityMembersCache.length === 0 || allCommunityMembersCache.length < 20) {
+    allCommunityMembersCache = await StorageService.getAllCommunityMembers(forceRefresh);
   }
 
   const currentUser = StorageService.currentUser || {};
@@ -8948,7 +8955,7 @@ function initPWAEngine() {
   const isIos = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase()) && !window.MSStream;
 
   // Purge any stale caches from previous builds
-  const ACTIVE_BUILD = 'v115';
+  const ACTIVE_BUILD = 'v116';
   if (localStorage.getItem('pinPotha_active_build') !== ACTIVE_BUILD) {
     localStorage.setItem('pinPotha_active_build', ACTIVE_BUILD);
     if ('caches' in window) {

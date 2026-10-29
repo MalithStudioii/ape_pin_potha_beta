@@ -231,7 +231,7 @@ export const StorageService = {
    */
   async getAllCommunityMembers(forceRefresh = false) {
     const now = Date.now();
-    if (!forceRefresh && this._cachedCommunityMembers && (now - this._lastCommunityMembersFetchTime < 20000)) {
+    if (!forceRefresh && this._cachedCommunityMembers && this._cachedCommunityMembers.length > 20 && (now - this._lastCommunityMembersFetchTime < 30000)) {
       return this._cachedCommunityMembers;
     }
 
@@ -335,8 +335,13 @@ export const StorageService = {
     // Sort by latest update or creation
     members.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
 
-    this._cachedCommunityMembers = members;
-    this._lastCommunityMembersFetchTime = now;
+    if (isCloudReady && db && members.length > 0) {
+      this._cachedCommunityMembers = members;
+      this._lastCommunityMembersFetchTime = now;
+    } else if (!this._cachedCommunityMembers || this._cachedCommunityMembers.length < members.length) {
+      this._cachedCommunityMembers = members;
+      this._lastCommunityMembersFetchTime = 0;
+    }
     return members;
   },
 
