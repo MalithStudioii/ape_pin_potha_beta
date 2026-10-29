@@ -121,7 +121,6 @@ export const StorageService = {
           }
         } catch(e) {}
       }
-    } catch (e) {}
 
       // 2. Mark dummy seed IDs as deleted locally so no component can ever display them
       const localDeleted = this.getDeletedPostIds();
