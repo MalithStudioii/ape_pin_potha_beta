@@ -3590,7 +3590,8 @@ body {
 }
 
 .collage-grid.collage-1 {
-  grid-template-columns: 1fr;
+  display: block;
+  width: 100%;
   max-height: 520px;
   background: #000000;
 }
@@ -3599,13 +3600,16 @@ body {
   align-items: center;
   justify-content: center;
   background: #000000;
+  min-height: 180px;
   max-height: 520px;
   width: 100%;
   cursor: pointer;
 }
 .collage-grid.collage-1 .collage-item img {
-  max-height: 520px;
   width: 100%;
+  height: auto !important;
+  min-height: 180px;
+  max-height: 520px;
   object-fit: contain;
   background: #000000;
   display: block;

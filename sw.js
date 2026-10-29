@@ -1,14 +1,14 @@
-// Ape Pin Potha Service Worker (v119)
+// Ape Pin Potha Service Worker (v122)
 // Strategy: Network-First for HTML, JS, CSS to guarantee instant updates; Stale-While-Revalidate for media assets
-const CACHE_NAME = 'pin-potha-cache-v121';
+const CACHE_NAME = 'pin-potha-cache-v122';
 const STATIC_ASSETS = [
   './',
   './index.html',
-  './css/styles.css?v=121',
-  './js/app.js?v=121',
-  './js/storage.js',
+  './css/styles.css?v=122',
+  './js/app.js?v=122',
+  './js/storage.js?v=122',
   './js/aranya-data.js',
-  './js/security.js',
+  './js/security.js?v=122',
   './js/algorithm.js',
   './js/sound.js',
   './manifest.json',
@@ -92,22 +92,21 @@ self.addEventListener('fetch', (event) => {
     url.pathname === '/';
 
   if (isAppShell) {
-    // Ultra-Fast Stale-While-Revalidate: Instant 5ms render from Cache, revalidate in background!
+    // True Network-First for App Shell: fetch fresh assets from network, fallback to cache if offline
     event.respondWith(
-      caches.match(request).then((res) => res || caches.match(request, { ignoreSearch: true })).then((cachedResponse) => {
-        const fetchTarget = (request.mode === 'navigate') ? request.url : request;
-        const networkFetch = fetch(fetchTarget, { cache: 'no-cache' })
-          .then((networkResponse) => {
-            if (networkResponse && networkResponse.status === 200) {
-              const copy = networkResponse.clone();
-              caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-            }
-            return networkResponse;
-          })
-          .catch(() => cachedResponse || (request.mode === 'navigate' ? caches.match('./index.html') : null));
-
-        return cachedResponse || networkFetch;
-      })
+      fetch((request.mode === 'navigate') ? request.url : request, { cache: 'no-cache' })
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const copy = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+          }
+          return networkResponse;
+        })
+        .catch(() => {
+          return caches.match(request).then((res) => {
+            return res || (request.mode === 'navigate' ? caches.match('./index.html') : null);
+          });
+        })
     );
     return;
   }

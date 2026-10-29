@@ -116,8 +116,14 @@ export const StorageService = {
         try {
           const list = JSON.parse(raw);
           if (Array.isArray(list)) {
-            const cleaned = list.filter(p => !this.isDummyTestPost(p));
-            localStorage.setItem('pinPotha_posts', JSON.stringify(cleaned));
+            const hasAnyImage = list.some(p => Boolean(p.image || (Array.isArray(p.images) && p.images.length > 0)));
+            if (!hasAnyImage && list.length > 0) {
+              console.log('[Storage] Self-healing: purged image-stripped posts cache');
+              localStorage.removeItem('pinPotha_posts');
+            } else {
+              const cleaned = list.filter(p => !this.isDummyTestPost(p));
+              localStorage.setItem('pinPotha_posts', JSON.stringify(cleaned));
+            }
           }
         } catch(e) {}
       }
@@ -836,14 +842,10 @@ export const StorageService = {
         localStorage.setItem('pinPotha_posts', JSON.stringify(top10));
         localStorage.removeItem('pinPotha_sandbox_posts');
       } catch (err2) {
-        console.warn('[Storage] Fallback top 10 also failed, storing minimal metadata:', err2);
+        console.warn('[Storage] Fallback top 10 also failed, storing top 4 posts:', err2);
         try {
-          const minimal = cleanPosts.slice(0, 8).map(p => ({
-            ...p,
-            image: (p.image && String(p.image).length > 60000) ? null : p.image,
-            images: Array.isArray(p.images) ? p.images.filter(img => String(img).length <= 60000) : (p.image ? [p.image] : [])
-          }));
-          localStorage.setItem('pinPotha_posts', JSON.stringify(minimal));
+          const top4 = cleanPosts.slice(0, 4);
+          localStorage.setItem('pinPotha_posts', JSON.stringify(top4));
           localStorage.removeItem('pinPotha_sandbox_posts');
         } catch (err3) {}
       }

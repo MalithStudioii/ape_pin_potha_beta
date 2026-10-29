@@ -4,8 +4,8 @@
  * ============================================================================
  */
 
-import { StorageService } from './storage.js?v=121';
-import { Security } from './security.js?v=121';
+import { StorageService } from './storage.js?v=122';
+import { Security } from './security.js?v=122';
 import { uploadToImgBB } from './imgbb-service.js?v=66';
 import { SoundService, triggerHaptic } from './sound.js?v=66';
 import { FeedAlgorithm } from './algorithm.js?v=66';
@@ -292,9 +292,15 @@ function bootApp() {
     const container = document.getElementById('postsContainer');
     const hasRenderedCards = container && container.children.length > 0 && !container.querySelector('.feed-loading-shimmer');
 
+    const feedHasImages = Boolean(container && container.querySelector('.photo-collage-container'));
+    const incomingHasImages = cleanPosts.some(p => Boolean(p.image || (Array.isArray(p.images) && p.images.length > 0)));
+
     if (hasRenderedCards && prevIds.length > 0 && prevIds === newIds) {
-      // In-place updates to prevent feed DOM teardown, scroll jump, and image flicker
-      updateFeedInPlace(currentPostsData);
+      if (!feedHasImages && incomingHasImages) {
+        renderFeed();
+      } else {
+        updateFeedInPlace(currentPostsData);
+      }
     } else if (hasRenderedCards && prevIds.length > 0 && newIds !== prevIds && newIds.startsWith(prevIds)) {
       // Posts were appended at the bottom via pagination! Smooth append without resetting DOM or scroll position
       appendNewPostsToFeed(posts, prevIds);
