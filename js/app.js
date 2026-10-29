@@ -8906,7 +8906,7 @@ function initPWAEngine() {
   const isIos = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase()) && !window.MSStream;
 
   // Purge any stale caches from previous builds
-  const ACTIVE_BUILD = 'v111';
+  const ACTIVE_BUILD = 'v112';
   if (localStorage.getItem('pinPotha_active_build') !== ACTIVE_BUILD) {
     localStorage.setItem('pinPotha_active_build', ACTIVE_BUILD);
     if ('caches' in window) {
@@ -9807,6 +9807,21 @@ window.switchPoliciesSubTab = function(subTabName = 'about') {
       }
     }
   });
+
+  // Auto-center active tab button horizontally in the tabs bar so users clearly see more tabs on either side
+  const centerActiveTab = () => {
+    const activeBtn = document.getElementById(`pol-tab-${subTabName}`);
+    const navTabsContainer = activeBtn ? activeBtn.closest('.policies-nav-tabs') : null;
+    if (activeBtn && navTabsContainer) {
+      const btnLeft = activeBtn.offsetLeft;
+      const btnWidth = activeBtn.offsetWidth;
+      const containerWidth = navTabsContainer.clientWidth;
+      const scrollTarget = btnLeft - (containerWidth / 2) + (btnWidth / 2);
+      navTabsContainer.scrollTo({ left: Math.max(0, scrollTarget), behavior: 'smooth' });
+    }
+  };
+  centerActiveTab();
+  setTimeout(centerActiveTab, 80);
 
   // If settings subtab is active, sync sound checkbox and user data
   if (subTabName === 'settings') {

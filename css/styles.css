@@ -10202,9 +10202,10 @@ body.drawer-open {
   align-items: center;
   gap: 8px;
   overflow-x: auto;
-  padding-bottom: 4px;
+  padding: 4px 4px 8px;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
 }
 
 .policies-nav-tabs::-webkit-scrollbar {
@@ -10377,6 +10378,15 @@ body.drawer-open {
   }
   .policies-hero-desc {
     font-size: 0.82rem;
+  }
+  .policies-nav-tabs {
+    gap: 6px;
+    padding: 4px 2px 6px;
+  }
+  .policies-nav-btn {
+    padding: 7px 12px;
+    font-size: 0.78rem;
+    gap: 6px;
   }
   .policies-tab-content {
     padding: 18px 14px;
