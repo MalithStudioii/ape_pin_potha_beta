@@ -568,9 +568,11 @@ function updateUserStats() {
 }
 
 // Member Profile Modal Controllers (Facebook-Style Profile Viewer)
-window.viewUserProfile = async function(uid, authorName) {
+window.viewUserProfile = async function(uid, authorName, authorPhoto = null, coverImage = null) {
   triggerHaptic(15);
   SoundService.playClick();
+
+  if (uid === 'undefined' || uid === 'null' || !uid) uid = null;
 
   if (uid === 'official_pin_potha' || authorName === 'අපේ පිං පොත' || authorName === 'පිං පොත පරිපාලනය' || authorName === 'පිං පොත නිල නිවේදනය') {
     return;
@@ -582,12 +584,12 @@ window.viewUserProfile = async function(uid, authorName) {
   }
 
   const current = StorageService.currentUser;
-  if (current && ((uid && current.uid && uid === current.uid) || (!uid && authorName && current.name && authorName === current.name))) {
+  if (current && ((uid && current.uid && uid === current.uid) || (!uid && authorName && current.name && authorName.trim().toLowerCase() === current.name.trim().toLowerCase()))) {
     switchTab('profile');
     return;
   }
 
-  await openMemberProfileModal(uid, authorName);
+  await openMemberProfileModal(uid, authorName, authorPhoto, coverImage);
 };
 
 let currentViewingMember = null;
@@ -607,9 +609,38 @@ window.viewMemberCoverPhoto = function(e) {
   }
 };
 
-window.openMemberProfileModal = async function(uid, authorName) {
+window.openMemberProfileModal = async function(uid, authorName, authorPhoto = null, coverImage = null) {
   const modal = document.getElementById('memberProfileModal');
   if (!modal) return;
+
+  if (uid === 'undefined' || uid === 'null' || !uid) uid = null;
+  const initialName = (authorName || 'කල්‍යාණ මිත්‍ර').trim();
+  const initialChar = initialName.charAt(0) || 'ක';
+
+  // 1. Immediately reset previous modal content to prevent cross-profile flicker
+  const coverImg = document.getElementById('memCoverImg');
+  if (coverImg) coverImg.src = coverImage || 'assets/banner.jpg';
+
+  const avatarWrap = document.getElementById('memAvatarWrap');
+  if (avatarWrap) {
+    avatarWrap.classList.remove('sangha-framed-avatar');
+    if (authorPhoto) {
+      avatarWrap.innerHTML = `<img src="${Security.sanitizeUrl(authorPhoto)}" alt="${Security.escapeHTML(initialName)}" onerror="this.parentElement.innerHTML = '<span>${initialChar}</span>';">`;
+    } else {
+      avatarWrap.innerHTML = `<span>${initialChar}</span>`;
+    }
+  }
+
+  const nameEl = document.getElementById('memFullName');
+  if (nameEl) nameEl.innerHTML = Security.escapeHTML(initialName);
+
+  const bioEl = document.getElementById('memBio');
+  if (bioEl) bioEl.innerText = `"සබ්බපාපස්ස අකරණං - කුසලස්ස උපසම්පදා 🙏"`;
+
+  const postsFeedEl = document.getElementById('memPostsFeed');
+  if (postsFeedEl) {
+    postsFeedEl.innerHTML = '<div style="text-align: center; padding: 24px; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin" style="font-size: 1.2rem; color: #d97706; margin-bottom: 8px; display: block;"></i> <span>තොරතුරු පූරණය වෙමින් පවතී...</span></div>';
+  }
 
   try {
     history.pushState({ type: 'modal', id: 'memberProfileModal' }, '');
@@ -617,33 +648,39 @@ window.openMemberProfileModal = async function(uid, authorName) {
   document.body.style.overflow = 'hidden';
   modal.classList.remove('hidden');
 
-  // Load profile from StorageService
-  const member = await StorageService.getUserProfile(uid) || {
-    uid,
-    name: authorName || 'කල්‍යාණ මිත්‍ර',
-    photo: null,
-    coverImage: 'assets/banner.jpg',
+  // 2. Load fresh profile from StorageService
+  const member = await StorageService.getUserProfile(uid, authorName) || {
+    uid: uid || null,
+    name: initialName,
+    photo: authorPhoto || null,
+    coverImage: coverImage || 'assets/banner.jpg',
     bio: "සබ්බපාපස්ස අකරණං - කුසලස්ස උපසම්පදා 🙏",
     location: '',
     occupation: '',
     joinedDate: '2026 ඔක්තෝබර්'
   };
 
+  // If caller had specific photo or cover and member object doesn't have it, preserve it
+  if (authorPhoto && (!member.photo || member.photo.trim().length === 0)) {
+    member.photo = authorPhoto;
+  }
+  if (coverImage && (!member.coverImage || member.coverImage === 'assets/banner.jpg')) {
+    member.coverImage = coverImage;
+  }
+
   currentViewingMember = member;
 
-  const coverImg = document.getElementById('memCoverImg');
   if (coverImg) coverImg.src = member.coverImage || 'assets/banner.jpg';
 
   const isSangha = StorageService.isSangha(member);
   const isMaster = StorageService.isMasterAdmin();
   const currentUid = StorageService.currentUser?.uid;
 
-  const avatarWrap = document.getElementById('memAvatarWrap');
   if (avatarWrap) {
-    const initialChar = (member.name || authorName || 'ක').trim().charAt(0);
+    const finalInitial = (member.name || initialName || 'ක').trim().charAt(0);
     const innerPhoto = member.photo 
-      ? `<img src="${member.photo}" alt="${Security.escapeHTML(member.name || '')}" onerror="this.parentElement.innerHTML = '<span>${initialChar}</span>';">`
-      : `<span>${initialChar}</span>`;
+      ? `<img src="${Security.sanitizeUrl(member.photo)}" alt="${Security.escapeHTML(member.name || '')}" onerror="this.parentElement.innerHTML = '<span>${finalInitial}</span>';">`
+      : `<span>${finalInitial}</span>`;
 
     if (isSangha) {
       avatarWrap.classList.add('sangha-framed-avatar');
@@ -852,7 +889,7 @@ window.openMemberProfileModal = async function(uid, authorName) {
           const isFSangha = StorageService.isSangha(f);
           const initial = (f.name || 'ක').charAt(0);
           return `
-          <div class="mem-fb-friend-card" onclick="openMemberProfileModal('${f.uid}', '${Security.escapeHTML(f.name)}')">
+          <div class="mem-fb-friend-card" onclick="openMemberProfileModal('${f.uid}', '${Security.escapeHTML(f.name)}', '${f.photo ? Security.sanitizeUrl(f.photo) : ''}', '${f.coverImage ? Security.sanitizeUrl(f.coverImage) : ''}')">
             <div class="mem-fb-friend-thumb ${isFSangha ? 'sangha-framed-avatar' : ''}">
               ${f.photo ? `<img src="${Security.sanitizeUrl(f.photo)}" alt="${Security.escapeHTML(f.name)}" onerror="this.parentElement.innerText = '${initial}';">` : initial}
               ${isFSangha ? '<img src="assets/sangha-frame.png" class="sangha-vatapatha-frame" alt="වටාපත" style="position:absolute; inset:-3px; width:calc(100% + 6px); height:calc(100% + 6px); pointer-events:none;">' : ''}
@@ -1621,7 +1658,7 @@ function formatCommentTextWithMentions(rawText) {
       if (!m.name || !m.name.trim()) return;
       const escName = Security.escapeHTML(m.name.trim());
       const pattern = new RegExp(`@${escapeRegex(escName)}(?=[\\s.,!?;:)]|$)`, 'g');
-      escaped = escaped.replace(pattern, `<span class="comment-mention-tag" onclick="event.stopPropagation(); viewUserProfile('${m.uid}', '${escName.replace(/'/g, "\\'")}')" title="${escName} ගේ Profile එක බලන්න">@${escName}</span>`);
+      escaped = escaped.replace(pattern, `<span class="comment-mention-tag" onclick="event.stopPropagation(); viewUserProfile('${m.uid || ''}', '${escName.replace(/'/g, "\\'")}', '${m.photo ? Security.sanitizeUrl(m.photo) : ''}')" title="${escName} ගේ Profile එක බලන්න">@${escName}</span>`);
     });
   }
 
@@ -1661,14 +1698,14 @@ function renderSingleCommentHTML(c, postId, user, index) {
 
   return `
     <div class="comment-bubble" id="comment-bubble-${commentKey}">
-      <div class="comment-avatar ${isCommentSangha ? 'sangha-framed-avatar' : ''}" onclick="viewUserProfile('${c.uid || ''}', '${Security.escapeHTML(cAuthorName)}')" style="cursor: pointer;" title="${Security.escapeHTML(cAuthorName)} ගේ Profile එක බලන්න">
+      <div class="comment-avatar ${isCommentSangha ? 'sangha-framed-avatar' : ''}" onclick="viewUserProfile('${c.uid || ''}', '${Security.escapeHTML(cAuthorName)}', '${cAuthorPhoto ? Security.sanitizeUrl(cAuthorPhoto) : ''}')" style="cursor: pointer;" title="${Security.escapeHTML(cAuthorName)} ගේ Profile එක බලන්න">
         ${cAuthorPhoto ? `<img src="${Security.sanitizeUrl(cAuthorPhoto)}" alt="${Security.escapeHTML(cAuthorName)}" loading="lazy">` : `<span>${Security.escapeHTML(cAuthorName.charAt(0) || '👤')}</span>`}
         ${isCommentSangha ? '<img src="assets/sangha-frame.png" class="sangha-vatapatha-frame" alt="වටාපත">' : ''}
       </div>
       <div class="comment-text-box">
         <div class="comment-author-row">
           <div class="comment-meta-left">
-            <span class="author-click-link" onclick="viewUserProfile('${c.uid || ''}', '${Security.escapeHTML(cAuthorName)}')" style="cursor: pointer; font-weight: 700; color: #1e293b;" title="${Security.escapeHTML(cAuthorName)} ගේ Profile එක බලන්න">${Security.escapeHTML(cAuthorName)}</span>
+            <span class="author-click-link" onclick="viewUserProfile('${c.uid || ''}', '${Security.escapeHTML(cAuthorName)}', '${cAuthorPhoto ? Security.sanitizeUrl(cAuthorPhoto) : ''}')" style="cursor: pointer; font-weight: 700; color: #1e293b;" title="${Security.escapeHTML(cAuthorName)} ගේ Profile එක බලන්න">${Security.escapeHTML(cAuthorName)}</span>
             ${isCommentMaster ? `<span class="badge-crown" title="Master Admin">👑</span>` : (isCommentSubAdmin ? `<span class="badge-shield" title="පරිපාලක (Admin)">🛡️</span>` : '')}
             ${isCommentSangha ? '<span class="sangha-author-badge" style="padding: 1.5px 7px; font-size: 0.62rem; margin-left: 4px;"><i class="fa-solid fa-dharmachakra"></i> පූජනීය සංඝරත්නය</span>' : ''}
             <span class="comment-time">${Security.escapeHTML(formatRelativeTimeSinhala(c.timestamp, c.time || 'දැන්'))}</span>
@@ -1816,11 +1853,11 @@ function renderPostCardHTML(post, user) {
       ${isRepost ? `
         <div class="repost-header-tag">
           <div style="display: flex; align-items: center; gap: 8px;">
-            <div class="repost-icon-circle" onclick="viewUserProfile('${post.uid}', '${Security.escapeHTML(postAuthorName)}')" style="cursor: pointer;" title="${Security.escapeHTML(postAuthorName)} ගේ Profile එක බලන්න">
+            <div class="repost-icon-circle" onclick="viewUserProfile('${post.uid || ''}', '${Security.escapeHTML(postAuthorName)}', '${postAuthorPhoto ? Security.sanitizeUrl(postAuthorPhoto) : ''}')" style="cursor: pointer;" title="${Security.escapeHTML(postAuthorName)} ගේ Profile එක බලන්න">
               <i class="fa-solid fa-repeat"></i>
             </div>
             <div>
-              <span class="repost-actor-name ${post.isOfficial ? '' : 'author-click-link'}" ${post.isOfficial ? '' : `onclick="viewUserProfile('${post.uid}', '${Security.escapeHTML(postAuthorName)}')"`} title="${Security.escapeHTML(postAuthorName)} ගේ Profile එක බලන්න"><strong>${Security.escapeHTML(post.isOfficial ? 'අපේ පිං පොත' : postAuthorName)}</strong> විසින් යළි බෙදාගන්නා ලදී</span>
+              <span class="repost-actor-name ${post.isOfficial ? '' : 'author-click-link'}" ${post.isOfficial ? '' : `onclick="viewUserProfile('${post.uid || ''}', '${Security.escapeHTML(postAuthorName)}', '${postAuthorPhoto ? Security.sanitizeUrl(postAuthorPhoto) : ''}')"`} title="${Security.escapeHTML(postAuthorName)} ගේ Profile එක බලන්න"><strong>${Security.escapeHTML(post.isOfficial ? 'අපේ පිං පොත' : postAuthorName)}</strong> විසින් යළි බෙදාගන්නා ලදී</span>
               <span class="repost-time">${Security.escapeHTML(formatRelativeTimeSinhala(post.timestamp, post.date || 'දැන්'))}</span>
             </div>
           </div>
@@ -1848,9 +1885,9 @@ function renderPostCardHTML(post, user) {
           <div class="quoted-merit-box" onclick="viewOriginalPost('${orig.id}', '${post.id}')" title="සම්පූර්ණ මුල් සටහන බලන්න ක්ලික් කරන්න">
             <div class="quoted-merit-header">
               <div style="display: flex; align-items: center; gap: 8px;">
-                <div class="quoted-avatar" onclick="event.stopPropagation(); viewUserProfile('${orig.uid}', '${Security.escapeHTML(origAuthorName)}')" style="cursor: pointer;" title="${Security.escapeHTML(origAuthorName)} ගේ Profile එක බලන්න">${origAuthorPhoto ? `<img src="${Security.sanitizeUrl(origAuthorPhoto)}" style="width: 100%; height: 100%; border-radius: 9999px; object-fit: cover;">` : Security.escapeHTML(origAuthorName.charAt(0))}</div>
+                <div class="quoted-avatar" onclick="event.stopPropagation(); viewUserProfile('${orig.uid || ''}', '${Security.escapeHTML(origAuthorName)}', '${origAuthorPhoto ? Security.sanitizeUrl(origAuthorPhoto) : ''}')" style="cursor: pointer;" title="${Security.escapeHTML(origAuthorName)} ගේ Profile එක බලන්න">${origAuthorPhoto ? `<img src="${Security.sanitizeUrl(origAuthorPhoto)}" style="width: 100%; height: 100%; border-radius: 9999px; object-fit: cover;">` : Security.escapeHTML(origAuthorName.charAt(0))}</div>
                 <div>
-                  <div class="author-click-link" onclick="event.stopPropagation(); viewUserProfile('${orig.uid}', '${Security.escapeHTML(origAuthorName)}')" title="${Security.escapeHTML(origAuthorName)} ගේ Profile එක බලන්න" style="font-weight: 700; font-size: 0.82rem; color: #78350f;">${Security.escapeHTML(origAuthorName)}</div>
+                  <div class="author-click-link" onclick="event.stopPropagation(); viewUserProfile('${orig.uid || ''}', '${Security.escapeHTML(origAuthorName)}', '${origAuthorPhoto ? Security.sanitizeUrl(origAuthorPhoto) : ''}')" title="${Security.escapeHTML(origAuthorName)} ගේ Profile එක බලන්න" style="font-weight: 700; font-size: 0.82rem; color: #78350f;">${Security.escapeHTML(origAuthorName)}</div>
                   <div style="font-size: 0.68rem; color: #94a3b8;">${Security.escapeHTML(formatRelativeTimeSinhala(orig.timestamp, orig.date || 'මෑතකදී'))} ${orig.location ? '• ' + Security.escapeHTML(orig.location) : ''}</div>
                 </div>
               </div>
@@ -1897,13 +1934,13 @@ function renderPostCardHTML(post, user) {
                 </div>
               </div>
             ` : `
-              <div class="post-avatar ${isNeed ? 'need' : ''} ${isAuthorSangha ? 'sangha-framed-avatar' : ''}" onclick="viewUserProfile('${post.uid}', '${Security.escapeHTML(postAuthorName)}')" style="cursor: pointer;" title="${Security.escapeHTML(postAuthorName)} ගේ Profile එක බලන්න">
+              <div class="post-avatar ${isNeed ? 'need' : ''} ${isAuthorSangha ? 'sangha-framed-avatar' : ''}" onclick="viewUserProfile('${post.uid || ''}', '${Security.escapeHTML(postAuthorName)}', '${postAuthorPhoto ? Security.sanitizeUrl(postAuthorPhoto) : ''}')" style="cursor: pointer;" title="${Security.escapeHTML(postAuthorName)} ගේ Profile එක බලන්න">
                 ${postAuthorPhoto ? `<img src="${Security.sanitizeUrl(postAuthorPhoto)}" style="width: 100%; height: 100%; border-radius: 9999px; object-fit: cover;">` : `<span>${Security.escapeHTML(postAuthorName.charAt(0))}</span>`}
                 ${isAuthorSangha ? '<img src="assets/sangha-frame.png" class="sangha-vatapatha-frame" alt="වටාපත">' : ''}
               </div>
               <div>
                 <div class="post-badges-wrap">
-                  <span class="post-author-name author-click-link" onclick="viewUserProfile('${post.uid}', '${Security.escapeHTML(postAuthorName)}')" style="cursor: pointer;" title="${Security.escapeHTML(postAuthorName)} ගේ Profile එක බලන්න">${Security.escapeHTML(postAuthorName)}</span>
+                  <span class="post-author-name author-click-link" onclick="viewUserProfile('${post.uid || ''}', '${Security.escapeHTML(postAuthorName)}', '${postAuthorPhoto ? Security.sanitizeUrl(postAuthorPhoto) : ''}')" style="cursor: pointer;" title="${Security.escapeHTML(postAuthorName)} ගේ Profile එක බලන්න">${Security.escapeHTML(postAuthorName)}</span>
                   ${isAuthorMaster ? `<span class="badge-crown" title="Master Admin">👑</span>` : (isAuthorSubAdmin ? `<span class="badge-shield" title="පරිපාලක (Admin)">🛡️</span>` : '')}
                   ${isAuthorSangha ? `
                     <span class="sangha-author-badge" title="පූජනීය මහා සංඝරත්නය"><i class="fa-solid fa-dharmachakra"></i> පූජනීය සංඝරත්නය</span>
@@ -4711,11 +4748,11 @@ window.openReelsViewer = function(initialPostId = null) {
         <!-- Bottom Post Information Overlay -->
         <div class="reels-bottom-info">
           <div class="reels-author-row">
-            <div class="reels-author-avatar" onclick="closeReelsViewer(); viewUserProfile('${reel.uid}', '${Security.escapeHTML(authorName)}')" style="cursor: pointer;">
+            <div class="reels-author-avatar" onclick="closeReelsViewer(); viewUserProfile('${reel.uid || ''}', '${Security.escapeHTML(authorName)}', '${authorPhoto ? Security.sanitizeUrl(authorPhoto) : ''}')" style="cursor: pointer;">
               ${authorPhoto ? `<img src="${Security.sanitizeUrl(authorPhoto)}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">` : Security.escapeHTML(authorName.charAt(0))}
             </div>
             <div>
-              <span class="reels-author-name" onclick="closeReelsViewer(); viewUserProfile('${reel.uid}', '${Security.escapeHTML(authorName)}')">${Security.escapeHTML(authorName)}</span>
+              <span class="reels-author-name" onclick="closeReelsViewer(); viewUserProfile('${reel.uid || ''}', '${Security.escapeHTML(authorName)}', '${authorPhoto ? Security.sanitizeUrl(authorPhoto) : ''}')">${Security.escapeHTML(authorName)}</span>
             </div>
             <span class="reels-category-tag">${Security.escapeHTML(reel.category || 'ධර්ම දානමය')}</span>
           </div>
@@ -5158,12 +5195,12 @@ window.renderReelCommentsList = function(post) {
     const cAuthorPhoto = StorageService.resolveAuthorPhoto(c);
     return `
       <div class="reels-comment-item">
-        <div class="reels-comment-avatar" onclick="closeReelsViewer(); viewUserProfile('${c.uid || ''}', '${Security.escapeHTML(cAuthorName)}')" style="cursor: pointer;" title="${Security.escapeHTML(cAuthorName)} ගේ Profile එක බලන්න">
+        <div class="reels-comment-avatar" onclick="closeReelsViewer(); viewUserProfile('${c.uid || ''}', '${Security.escapeHTML(cAuthorName)}', '${cAuthorPhoto ? Security.sanitizeUrl(cAuthorPhoto) : ''}')" style="cursor: pointer;" title="${Security.escapeHTML(cAuthorName)} ගේ Profile එක බලන්න">
           ${cAuthorPhoto ? `<img src="${Security.sanitizeUrl(cAuthorPhoto)}" alt="${Security.escapeHTML(cAuthorName)}">` : Security.escapeHTML(cAuthorName.charAt(0) || '👤')}
         </div>
         <div class="reels-comment-content">
           <div class="reels-comment-author-line">
-            <span class="reels-comment-author" onclick="closeReelsViewer(); viewUserProfile('${c.uid || ''}', '${Security.escapeHTML(cAuthorName)}')">${Security.escapeHTML(cAuthorName)}</span>
+            <span class="reels-comment-author" onclick="closeReelsViewer(); viewUserProfile('${c.uid || ''}', '${Security.escapeHTML(cAuthorName)}', '${cAuthorPhoto ? Security.sanitizeUrl(cAuthorPhoto) : ''}')">${Security.escapeHTML(cAuthorName)}</span>
             <span class="reels-comment-time">${Security.escapeHTML(formatRelativeTimeSinhala(c.timestamp, c.time || 'දැන්'))}</span>
           </div>
           <div class="reels-comment-text">${formatCommentTextWithMentions(c.text)}</div>
@@ -5929,11 +5966,11 @@ function renderProfileSubTabContent(user, myPosts, myPhotosPosts, myPrivatePosts
           const initial = (req.senderName || 'ක').charAt(0);
           return `
           <div class="mithra-card" style="border-color: #fde68a; background: #fffdf8;">
-            <div class="mithra-card-avatar ${isReqSangha ? 'sangha-framed-avatar' : ''}" onclick="openMemberProfileModal('${req.senderUid}', '${Security.escapeHTML(req.senderName)}')" style="cursor: pointer;">
+            <div class="mithra-card-avatar ${isReqSangha ? 'sangha-framed-avatar' : ''}" onclick="openMemberProfileModal('${req.senderUid}', '${Security.escapeHTML(req.senderName)}', '${req.senderPhoto ? Security.sanitizeUrl(req.senderPhoto) : ''}')" style="cursor: pointer;">
               ${req.senderPhoto ? `<img src="${Security.sanitizeUrl(req.senderPhoto)}" alt="${Security.escapeHTML(req.senderName)}" onerror="this.parentElement.innerText = '${initial}';">` : initial}
               ${isReqSangha ? '<img src="assets/sangha-frame.png" class="sangha-vatapatha-frame" alt="වටාපත">' : ''}
             </div>
-            <div class="mithra-card-details" onclick="openMemberProfileModal('${req.senderUid}', '${Security.escapeHTML(req.senderName)}')" style="cursor: pointer;">
+            <div class="mithra-card-details" onclick="openMemberProfileModal('${req.senderUid}', '${Security.escapeHTML(req.senderName)}', '${req.senderPhoto ? Security.sanitizeUrl(req.senderPhoto) : ''}')" style="cursor: pointer;">
               <div class="mithra-card-name">
                 <span>${Security.escapeHTML(req.senderName || 'කල්‍යාණ මිත්‍ර')}</span>
                 ${isReqSangha ? `<span class="sangha-author-badge" style="margin-left: 4px; padding: 1px 7px; font-size: 0.62rem;"><i class="fa-solid fa-dharmachakra"></i> පූජනීය සංඝරත්නය</span>` : ''}
@@ -5988,11 +6025,11 @@ function renderProfileSubTabContent(user, myPosts, myPhotosPosts, myPrivatePosts
           const initial = (m.name || 'ක').charAt(0);
           return `
           <div class="mithra-card">
-            <div class="mithra-card-avatar ${isMemberSangha ? 'sangha-framed-avatar' : ''}" onclick="openMemberProfileModal('${m.uid}', '${Security.escapeHTML(m.name)}')" style="cursor: pointer;">
+            <div class="mithra-card-avatar ${isMemberSangha ? 'sangha-framed-avatar' : ''}" onclick="openMemberProfileModal('${m.uid}', '${Security.escapeHTML(m.name)}', '${m.photo ? Security.sanitizeUrl(m.photo) : ''}', '${m.coverImage ? Security.sanitizeUrl(m.coverImage) : ''}')" style="cursor: pointer;">
               ${m.photo ? `<img src="${Security.sanitizeUrl(m.photo)}" alt="${Security.escapeHTML(m.name)}" onerror="this.parentElement.innerText = '${initial}';">` : `<span>${initial}</span>`}
               ${isMemberSangha ? '<img src="assets/sangha-frame.png" class="sangha-vatapatha-frame" alt="වටාපත">' : ''}
             </div>
-            <div class="mithra-card-details" onclick="openMemberProfileModal('${m.uid}', '${Security.escapeHTML(m.name)}')" style="cursor: pointer;">
+            <div class="mithra-card-details" onclick="openMemberProfileModal('${m.uid}', '${Security.escapeHTML(m.name)}', '${m.photo ? Security.sanitizeUrl(m.photo) : ''}', '${m.coverImage ? Security.sanitizeUrl(m.coverImage) : ''}')" style="cursor: pointer;">
               <div class="mithra-card-name">
                 <span>${Security.escapeHTML(m.name || 'කල්‍යාණ මිත්‍ර')}</span>
                 ${isMemberMaster ? `<span class="badge-crown" title="Master Admin">👑</span>` : (isMemberSubAdmin ? `<span class="badge-shield" title="පරිපාලක (Admin)">🛡️</span>` : '')}
@@ -6004,7 +6041,7 @@ function renderProfileSubTabContent(user, myPosts, myPhotosPosts, myPrivatePosts
               </div>
             </div>
             <div class="mithra-card-actions">
-              <button type="button" class="btn-mithra-view" onclick="openMemberProfileModal('${m.uid}', '${Security.escapeHTML(m.name)}')">
+              <button type="button" class="btn-mithra-view" onclick="openMemberProfileModal('${m.uid}', '${Security.escapeHTML(m.name)}', '${m.photo ? Security.sanitizeUrl(m.photo) : ''}', '${m.coverImage ? Security.sanitizeUrl(m.coverImage) : ''}')">
                 <i class="fa-solid fa-eye"></i> පැතිකඩ
               </button>
               <button type="button" class="btn-mithra-view" style="color: #ef4444; border-color: #fecaca; background: #fff1f2;" onclick="handleRemoveMithra('${m.uid}')" title="මිතුරු සබඳතාව ඉවත් කරන්න">
@@ -7163,7 +7200,7 @@ window.renderCommunityDirectory = async function(filtered = null) {
     }
 
     return `
-      <div class="mithra-card directory-member-card" onclick="openMemberProfileModal('${m.uid}', '${Security.escapeHTML(m.name)}')">
+      <div class="mithra-card directory-member-card" onclick="openMemberProfileModal('${m.uid}', '${Security.escapeHTML(m.name)}', '${m.photo ? Security.sanitizeUrl(m.photo) : ''}', '${m.coverImage ? Security.sanitizeUrl(m.coverImage) : ''}')">
         <div class="mithra-card-avatar ${isMemberSangha ? 'sangha-framed-avatar' : ''}" style="cursor: pointer;">
           ${m.photo ? `<img src="${Security.sanitizeUrl(m.photo)}" alt="${Security.escapeHTML(m.name)}" onerror="this.parentElement.innerText = '${initial}';">` : `<span>${initial}</span>`}
           ${isMemberSangha ? '<img src="assets/sangha-frame.png" class="sangha-vatapatha-frame" alt="වටාපත">' : ''}
@@ -7181,7 +7218,7 @@ window.renderCommunityDirectory = async function(filtered = null) {
         </div>
         <div class="mithra-card-actions" onclick="event.stopPropagation()">
           ${actionBtnHtml}
-          <button type="button" class="btn-mithra-view" onclick="openMemberProfileModal('${m.uid}', '${Security.escapeHTML(m.name)}')" title="සම්පූර්ණ පැතිකඩ බලන්න">
+          <button type="button" class="btn-mithra-view" onclick="openMemberProfileModal('${m.uid}', '${Security.escapeHTML(m.name)}', '${m.photo ? Security.sanitizeUrl(m.photo) : ''}', '${m.coverImage ? Security.sanitizeUrl(m.coverImage) : ''}')" title="සම්පූර්ණ පැතිකඩ බලන්න">
             <i class="fa-solid fa-eye"></i>
           </button>
         </div>
@@ -7277,7 +7314,7 @@ window.renderPcSidebarMembers = async function(filterQuery = '', forceRefresh = 
 
     const isMemberSangha = StorageService.isSangha(m);
     return `
-      <div class="sidebar-member-item" onclick="openMemberProfileModal('${m.uid}', '${Security.escapeHTML(m.name)}')" title="${Security.escapeHTML(m.name)} ගේ පැතිකඩ බලන්න">
+      <div class="sidebar-member-item" onclick="openMemberProfileModal('${m.uid}', '${Security.escapeHTML(m.name)}', '${m.photo ? Security.sanitizeUrl(m.photo) : ''}', '${m.coverImage ? Security.sanitizeUrl(m.coverImage) : ''}')" title="${Security.escapeHTML(m.name)} ගේ පැතිකඩ බලන්න">
         <div class="sidebar-member-avatar ${isMemberSangha ? 'sangha-framed-avatar' : ''}">
           ${m.photo ? `<img src="${Security.sanitizeUrl(m.photo)}" alt="${Security.escapeHTML(m.name)}" onerror="this.parentElement.innerText = '${initial}';">` : `<span>${initial}</span>`}
           ${isMemberSangha ? '<img src="assets/sangha-frame.png" class="sangha-vatapatha-frame" alt="වටාපත">' : ''}
@@ -7722,7 +7759,7 @@ window.renderKmpDirectoryView = async function(forceRefresh = false) {
     }
 
     return `
-      <div class="kmp-card" onclick="openMemberProfileModal('${m.uid}', '${Security.escapeHTML(m.name)}')">
+      <div class="kmp-card" onclick="openMemberProfileModal('${m.uid}', '${Security.escapeHTML(m.name)}', '${m.photo ? Security.sanitizeUrl(m.photo) : ''}', '${m.coverImage ? Security.sanitizeUrl(m.coverImage) : ''}')">
         <div class="kmp-card-top">
           <div class="kmp-avatar-wrap ${isMemberSangha ? 'kmp-sangha-avatar' : ''}">
             ${m.photo ? `<img src="${Security.sanitizeUrl(m.photo)}" alt="${Security.escapeHTML(m.name)}" class="kmp-avatar-img" onerror="this.parentElement.innerHTML = '<div class=\\'kmp-avatar-initial\\'>${initial}</div>';">` : `<div class="kmp-avatar-initial">${initial}</div>`}
@@ -7753,7 +7790,7 @@ window.renderKmpDirectoryView = async function(forceRefresh = false) {
 
         <div class="kmp-card-actions" onclick="event.stopPropagation()">
           ${actionBtnHtml}
-          <button type="button" class="kmp-btn-view-profile" onclick="openMemberProfileModal('${m.uid}', '${Security.escapeHTML(m.name)}')" title="සම්පූර්ණ පැතිකඩ (Profile) බලන්න">
+          <button type="button" class="kmp-btn-view-profile" onclick="openMemberProfileModal('${m.uid}', '${Security.escapeHTML(m.name)}', '${m.photo ? Security.sanitizeUrl(m.photo) : ''}', '${m.coverImage ? Security.sanitizeUrl(m.coverImage) : ''}')" title="සම්පූර්ණ පැතිකඩ (Profile) බලන්න">
             <i class="fa-solid fa-user"></i>
           </button>
         </div>

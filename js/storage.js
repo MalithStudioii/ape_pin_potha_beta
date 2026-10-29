@@ -260,6 +260,7 @@ export const StorageService = {
             uid: docSnap.id,
             name: data.name || data.firstName || 'කල්‍යාණ මිත්‍ර',
             photo: data.photo || '',
+            coverImage: data.coverImage || 'assets/banner.jpg',
             bio: data.bio || '',
             location: data.location || data.district || '',
             joinedDate: data.joinedDate || '',
@@ -2531,22 +2532,51 @@ export const StorageService = {
   },
 
   /**
-   * Fetch a member's public profile by UID (from cache, cloud Firestore, or post fallback)
+   * Fetch a member's public profile by UID or Author Name (from in-memory community cache, cloud Firestore, or local posts)
    */
-  async getUserProfile(uid) {
-    if (!uid) return null;
-    if (this.currentUser && this.currentUser.uid === uid) {
-      return this.currentUser;
+  async getUserProfile(uid, authorName = null) {
+    // 0. Sanitize and validate UID
+    if (uid === 'undefined' || uid === 'null' || uid === '' || typeof uid !== 'string') {
+      uid = null;
     }
 
-    // 1. Check local cache
-    try {
-      const raw = localStorage.getItem('pinPotha_profile_' + uid);
-      if (raw) return JSON.parse(raw);
-    } catch (e) {}
+    const cleanAuthor = (authorName || '').trim();
 
-    // 2. Check Firestore
-    if (isCloudReady && db) {
+    // 1. Current user active session check
+    if (this.currentUser) {
+      if ((uid && this.currentUser.uid && this.currentUser.uid === uid) ||
+          (!uid && cleanAuthor && this.currentUser.name && this.currentUser.name.trim().toLowerCase() === cleanAuthor.toLowerCase())) {
+        return this.currentUser;
+      }
+    }
+
+    // 2. Cached community members check (live synced users from Firestore) - FASTEST & MOST ACCURATE!
+    if (this._cachedCommunityMembers && Array.isArray(this._cachedCommunityMembers)) {
+      const found = this._cachedCommunityMembers.find(m => 
+        (uid && m.uid && m.uid === uid) ||
+        (cleanAuthor && m.name && m.name.trim().toLowerCase() === cleanAuthor.toLowerCase())
+      );
+      if (found) {
+        return {
+          uid: found.uid || uid,
+          name: found.name || cleanAuthor || 'කල්‍යාණ මිත්‍ර',
+          photo: found.photo || null,
+          coverImage: found.coverImage || 'assets/banner.jpg',
+          bio: found.bio || "සබ්බපාපස්ස අකරණං - කුසලස්ස උපසම්පදා 🙏",
+          location: found.location || '',
+          occupation: found.occupation || '',
+          joinedDate: found.joinedDate || '2026 ඔක්තෝබර්',
+          isAdmin: found.isAdmin,
+          isSubAdmin: found.isSubAdmin,
+          isSangha: found.isSangha || this.isSangha(found),
+          role: found.role || (found.isSangha ? 'sangha' : 'member'),
+          mithrayan: Array.isArray(found.mithrayan) ? found.mithrayan : []
+        };
+      }
+    }
+
+    // 3. Query Firestore users collection if cloud ready & UID is present
+    if (uid && isCloudReady && db) {
       try {
         const { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js');
         const snap = await getDoc(doc(db, COLLECTIONS.USERS, uid));
@@ -2557,10 +2587,14 @@ export const StorageService = {
           if (isSub) {
             this._knownAdminUids.add(uid);
           }
-          data.isSangha = data.isSangha === true || data.role === 'sangha' || this.isSangha({ name: data.name });
+          data.uid = uid;
+          data.isSangha = data.isSangha === true || data.role === 'sangha' || this.isSangha({ uid, name: data.name });
           data.isAdmin = isMaster;
           data.isSubAdmin = isSub;
-          localStorage.setItem('pinPotha_profile_' + uid, JSON.stringify(data));
+          data.coverImage = data.coverImage || 'assets/banner.jpg';
+          try {
+            localStorage.setItem('pinPotha_profile_' + uid, JSON.stringify(data));
+          } catch (e) {}
           return data;
         }
       } catch (e) {
@@ -2568,22 +2602,59 @@ export const StorageService = {
       }
     }
 
-    // 3. Fallback: derive from existing posts in memory
+    // 4. Safe Local cache check (only if valid UID)
+    if (uid) {
+      try {
+        const raw = localStorage.getItem('pinPotha_profile_' + uid);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && (parsed.uid || parsed.name)) {
+            parsed.coverImage = parsed.coverImage || 'assets/banner.jpg';
+            return parsed;
+          }
+        }
+      } catch (e) {}
+    }
+
+    // 5. Fallback: derive from existing posts in memory
     const allPosts = this.getLocalPosts();
-    const userPost = allPosts.find(p => p.uid === uid);
+    const userPost = allPosts.find(p => 
+      (uid && p.uid === uid) || 
+      (cleanAuthor && p.author && p.author.trim().toLowerCase() === cleanAuthor.toLowerCase())
+    );
     if (userPost) {
+      const resolvedPhoto = this.resolveAuthorPhoto(userPost);
+      const isPostSangha = userPost.isSangha || userPost.authorRole === 'sangha' || this.isSangha({ uid: userPost.uid, name: userPost.author });
       return {
-        uid: userPost.uid,
-        name: userPost.author || 'කල්‍යාණ මිත්‍ර',
-        photo: userPost.authorPhoto || null,
+        uid: userPost.uid || uid,
+        name: userPost.author || cleanAuthor || 'කල්‍යාණ මිත්‍ර',
+        photo: resolvedPhoto || userPost.authorPhoto || null,
         coverImage: userPost.authorCover || 'assets/banner.jpg',
         bio: "සබ්බපාපස්ස අකරණං - කුසලස්ස උපසම්පදා 🙏",
         location: userPost.location || '',
         occupation: '',
         joinedDate: '2026 ඔක්තෝබර්',
         isAdmin: userPost.authorRole === 'admin',
-        isSangha: userPost.isSangha || userPost.authorRole === 'sangha' || this.isSangha({ name: userPost.author }),
-        role: (userPost.isSangha || userPost.authorRole === 'sangha') ? 'sangha' : 'member'
+        isSangha: isPostSangha,
+        role: isPostSangha ? 'sangha' : 'member'
+      };
+    }
+
+    // 6. Safe minimal profile for cleanAuthor
+    if (cleanAuthor) {
+      const isSanghaAuthor = this.isSangha({ uid, name: cleanAuthor });
+      return {
+        uid: uid || null,
+        name: cleanAuthor,
+        photo: null,
+        coverImage: 'assets/banner.jpg',
+        bio: "සබ්බපාපස්ස අකරණං - කුසලස්ස උපසම්පදා 🙏",
+        location: '',
+        occupation: '',
+        joinedDate: '2026 ඔක්තෝබර්',
+        isAdmin: false,
+        isSangha: isSanghaAuthor,
+        role: isSanghaAuthor ? 'sangha' : 'member'
       };
     }
 
