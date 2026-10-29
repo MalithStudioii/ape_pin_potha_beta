@@ -1126,7 +1126,7 @@ window.switchTab = function(tab, pushHistory = true) {
       banner.className = 'context-banner mybook';
       banner.innerHTML = `
         <h2>📖 මගේ පෞද්ගලික පිං පොත</h2>
-        <p>ඔබ පොදු පවුරට එක් කළ සහ ඔබට පමණක් පෙනෙන (Private) සියලුම කුසල සටහන් මෙහි සුරක්ෂිතව ඇත.</p>
+        <p>ඔබට පමණක් පෙනෙන (Private) ඔබගේ සියලුම පෞද්ගලික කුසල් සටහන් මෙහි සුරක්ෂිතව ඇත.</p>
       `;
     } else if (tab === 'needs') {
       banner.style.display = 'block';
@@ -1591,6 +1591,17 @@ function escapeRegex(str) {
   return (str || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+function formatPostContent(rawText) {
+  if (!rawText) return '';
+  const decoded = Security.unescapeHTML(rawText);
+  return decoded
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function formatCommentTextWithMentions(rawText) {
   if (!rawText) return '';
   let escaped = Security.escapeHTML(rawText);
@@ -1949,11 +1960,11 @@ function renderPostCardHTML(post, user) {
               (normTitle === normDesc);
 
             if (!isDuplicate && (!post.isOfficial || cleanTitle !== 'පිං පොත නිල නිවේදනය')) {
-              return `<h3 class="post-title">${Security.escapeHTML(cleanTitle)}</h3>`;
+              return `<h3 class="post-title">${formatPostContent(cleanTitle)}</h3>`;
             }
             return '';
           })()}
-          <p class="post-desc">${Security.escapeHTML(post.description)}</p>
+          <p class="post-desc">${formatPostContent(post.description)}</p>
         </div>
 
         <!-- Media Images or Video Player Facade Grid -->
@@ -2117,10 +2128,11 @@ function renderFeed() {
     }
 
     if (activeTab === 'mybook') {
+      if (post.visibility !== 'private') return false;
       if (activeCategory !== 'සියල්ල' && post.category !== activeCategory) return false;
       const isOwner = (user && post.uid === user.uid) ||
                       (user && user.email && post.authorEmail && post.authorEmail.toLowerCase() === user.email.toLowerCase()) ||
-                      (isMaster && (isOfficial || post.uid === 'user_malith' || post.author === 'අපේ පිං පොත'));
+                      (isMaster && (post.uid === 'user_malith' || post.author === 'අපේ පිං පොත'));
       return isOwner;
     }
 
@@ -2152,14 +2164,14 @@ function renderFeed() {
       container.innerHTML = `
         <div class="card" style="padding: 48px 20px; text-align: center; border: 1.5px dashed rgba(217, 119, 6, 0.35); border-radius: 20px; background: linear-gradient(180deg, #fffdf8, #fff8ea);">
           <div style="width: 72px; height: 72px; border-radius: 50%; background: #fffbeb; border: 2px solid #fef3c7; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px; box-shadow: 0 4px 16px rgba(245, 158, 11, 0.18);">
-            <i class="fa-solid fa-dharmachakra animate-spin-slow" style="font-size: 2.2rem; color: #d97706;"></i>
+            <i class="fa-solid fa-book-bookmark animate-spin-slow" style="font-size: 2.2rem; color: #d97706;"></i>
           </div>
-          <h3 style="font-family: var(--font-serif); font-size: 1.15rem; font-weight: 700; color: #451a03; margin-bottom: 6px;">ඔබ තවම පින්කම් සටහන් කර නැත</h3>
+          <h3 style="font-family: var(--font-serif); font-size: 1.15rem; font-weight: 700; color: #451a03; margin-bottom: 6px;">ඔබ තවම පෞද්ගලික පින්කම් සටහන් කර නැත</h3>
           <p style="font-size: 0.82rem; color: #78350f; max-width: 440px; margin: 0 auto 20px auto; line-height: 1.6;">
-            ඔබ සිදුකරන පින්කම් සහ කුසල ක්‍රියා මෙහි සටහන් කර ඔබේ ජීවිතයේ පුණ්‍ය පොත සම්පූර්ණ කරගන්න!
+            ඔබට පමණක් පෙනෙන පරිදි (Private) ඔබ සිදුකරන පින්කම් මෙහි රහසිගතව සටහන් කර තබාගත හැක.
           </p>
-          <button type="button" onclick="openModal('merit')" class="btn-profile-primary" style="display: inline-flex; align-items: center; gap: 8px; padding: 11px 24px; font-weight: 700; font-size: 0.88rem; border-radius: 9999px; background: linear-gradient(135deg, #f59e0b, #d97706); color: #ffffff; border: none; cursor: pointer; box-shadow: 0 6px 18px rgba(217, 119, 6, 0.35);">
-            <i class="fa-solid fa-plus"></i> පළමු සටහන එක් කරන්න!
+          <button type="button" onclick="openPrivateMeritComposer()" class="btn-profile-primary" style="display: inline-flex; align-items: center; gap: 8px; padding: 11px 24px; font-weight: 700; font-size: 0.88rem; border-radius: 9999px; background: linear-gradient(135deg, #f59e0b, #d97706); color: #ffffff; border: none; cursor: pointer; box-shadow: 0 6px 18px rgba(217, 119, 6, 0.35);">
+            <i class="fa-solid fa-plus"></i> පළමු පෞද්ගලික සටහන එක් කරන්න!
           </button>
         </div>
       `;
@@ -2344,10 +2356,11 @@ export function appendNewPostsToFeed(allPosts, prevIdsStr) {
     }
 
     if (activeTab === 'mybook') {
+      if (post.visibility !== 'private') return false;
       if (activeCategory !== 'සියල්ල' && post.category !== activeCategory) return false;
       const isOwner = (user && post.uid === user.uid) ||
                       (user && user.email && post.authorEmail && post.authorEmail.toLowerCase() === user.email.toLowerCase()) ||
-                      (isMaster && (isOfficial || post.uid === 'user_malith' || post.author === 'අපේ පිං පොත'));
+                      (isMaster && (post.uid === 'user_malith' || post.author === 'අපේ පිං පොත'));
       return isOwner;
     }
 
@@ -3679,6 +3692,15 @@ window.openModal = function(type = 'merit', triggerPhoto = false, triggerVideo =
   setPostType(type);
   selectedImagesList = [];
   renderComposerThumbnails();
+
+  const visSelect = document.getElementById('postVisibility');
+  if (visSelect) {
+    if (activeTab === 'mybook') {
+      visSelect.value = 'private';
+    } else {
+      visSelect.value = 'public';
+    }
+  }
 
   // Toggle Master Admin post controls
   const adminPostControls = document.getElementById('adminPostControls');
@@ -8926,7 +8948,7 @@ function initPWAEngine() {
   const isIos = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase()) && !window.MSStream;
 
   // Purge any stale caches from previous builds
-  const ACTIVE_BUILD = 'v114';
+  const ACTIVE_BUILD = 'v115';
   if (localStorage.getItem('pinPotha_active_build') !== ACTIVE_BUILD) {
     localStorage.setItem('pinPotha_active_build', ACTIVE_BUILD);
     if ('caches' in window) {
