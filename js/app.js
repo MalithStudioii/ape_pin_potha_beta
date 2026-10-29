@@ -9,6 +9,7 @@ import { Security } from './security.js?v=97';
 import { uploadToImgBB } from './imgbb-service.js?v=66';
 import { SoundService, triggerHaptic } from './sound.js?v=66';
 import { FeedAlgorithm } from './algorithm.js?v=66';
+let allCommunityMembersCache = [];
 
 /* ==========================================================================
    Sri Lanka Provinces & Districts Dataset & Dropdown Helper Functions
@@ -253,7 +254,7 @@ const COVER_PRESETS = [
 ];
 
 // Initialize Application
-document.addEventListener('DOMContentLoaded', () => {
+function bootApp() {
   initSmartHeaderScroll();
   initMobileBottomBarLock();
 
@@ -268,7 +269,7 @@ document.addEventListener('DOMContentLoaded', () => {
   updateUserInfoUI();
   updateUserStats();
   renderSideNeeds();
-  renderPcSidebarMembers();
+  // PC sidebar members loaded asynchronously during cloud bootstrap
 
   // Load initial global announcement, daily verse, and Poya calendar from storage
   const initialAnnounce = StorageService.getAdminAnnouncement();
@@ -309,7 +310,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Refresh admin stats if admin modal is open
     const adminPanel = document.getElementById('settingsContentAdmin');
     if (adminPanel && !adminPanel.classList.contains('hidden')) {
-      renderAdminDashboard();
+      if (typeof window.renderAdminDashboard === 'function') window.renderAdminDashboard();
     }
   });
 
@@ -410,7 +411,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Check URL query params for direct post sharing (?post=POST_ID)
   checkUrlDirectPost();
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bootApp);
+} else {
+  bootApp();
+}
 
 
 function updateCloudBanner(isConnected) {
@@ -632,7 +639,6 @@ window.openMemberProfileModal = async function(uid, authorName, authorPhoto = nu
   const nameEl = document.getElementById('memFullName');
   if (nameEl) nameEl.innerHTML = Security.escapeHTML(initialName);
 
-  const bioEl = document.getElementById('memBio');
   if (bioEl) bioEl.innerText = `"සබ්බපාපස්ස අකරණං - කුසලස්ස උපසම්පදා 🙏"`;
 
   const postsFeedEl = document.getElementById('memPostsFeed');
@@ -695,7 +701,6 @@ window.openMemberProfileModal = async function(uid, authorName, authorPhoto = nu
   const isProfileMaster = StorageService.isMasterAdmin(member);
   const isProfileSubAdmin = !isProfileMaster && StorageService.isSubAdmin(member);
 
-  const nameEl = document.getElementById('memFullName');
   if (nameEl) {
     nameEl.innerHTML = `
       ${Security.escapeHTML(member.name || authorName || 'කල්‍යාණ මිත්‍ර')}
@@ -6733,7 +6738,7 @@ window.filterNotifications = function(filterType, e) {
   renderNotificationsList();
 };
 
-window.renderNotificationsList = function() {
+export function renderNotificationsList() {
   const listEl = document.getElementById('notifList');
   const badgeEl = document.getElementById('notificationBadge');
   const pillEl = document.getElementById('notifUnreadPill');
@@ -6888,6 +6893,8 @@ window.renderNotificationsList = function() {
   }).join('');
 };
 
+window.renderNotificationsList = renderNotificationsList;
+
 window.handleNotificationClick = async function(notifId, postId, postType, senderUid) {
   // Mark as read
   if (notifId) {
@@ -6985,7 +6992,7 @@ window.markAllNotificationsAsRead = async function(e) {
 // Community Member Counter & Directory Controller (PC & Mobile)
 // ============================================================================
 
-let allCommunityMembersCache = [];
+// allCommunityMembersCache moved to top
 let activeFriendsSegment = 'my';
 let currentDirectoryFilterType = 'all';
 let currentDirectorySearchQuery = '';
@@ -7253,7 +7260,7 @@ window.filterDirectoryBy = function(type) {
   renderCommunityDirectory(list);
 };
 
-window.renderPcSidebarMembers = async function(filterQuery = '', forceRefresh = false) {
+export async function renderPcSidebarMembers(filterQuery = '', forceRefresh = false) {
   const container = document.getElementById('pcSidebarMemberList');
   const countPill = document.getElementById('pcCommunityCountPill');
   if (!container) return;
@@ -9125,17 +9132,19 @@ window.triggerPWAInstall = async function () {
   }
 };
 
-window.showPWAInstallBanner = function () {
+export function showPWAInstallBanner() {
   const banner = document.getElementById('pwaInstallBanner');
   if (banner) {
     banner.classList.remove('hidden');
-    requestAnimationFrame(() => {
+    (window.requestAnimationFrame || ((cb) => setTimeout(cb, 16)))(() => {
       banner.classList.add('visible');
     });
   }
 };
 
-window.hidePWAInstallBanner = function () {
+window.showPWAInstallBanner = showPWAInstallBanner;
+
+export function hidePWAInstallBanner() {
   const banner = document.getElementById('pwaInstallBanner');
   if (banner) {
     banner.classList.remove('visible');
@@ -9144,6 +9153,8 @@ window.hidePWAInstallBanner = function () {
     }, 400);
   }
 };
+
+window.hidePWAInstallBanner = hidePWAInstallBanner;
 
 window.dismissPWAInstallBanner = function () {
   triggerHaptic(15);
@@ -9167,7 +9178,7 @@ window.showPwaUpdateToast = function () {
   const toast = document.getElementById('pwaUpdateToast');
   if (toast) {
     toast.classList.remove('hidden');
-    requestAnimationFrame(() => {
+    (window.requestAnimationFrame || ((cb) => setTimeout(cb, 16)))(() => {
       toast.classList.add('visible');
     });
   }
@@ -9325,7 +9336,7 @@ export function openMobileMenuDrawer() {
   overlay?.classList.remove('hidden');
   drawer.classList.remove('hidden');
 
-  requestAnimationFrame(() => {
+  (window.requestAnimationFrame || ((cb) => setTimeout(cb, 16)))(() => {
     overlay?.classList.add('open');
     drawer.classList.add('open');
     document.body.classList.add('drawer-open');
