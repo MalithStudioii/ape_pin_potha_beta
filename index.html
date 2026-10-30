@@ -51,28 +51,26 @@
     <link rel="apple-touch-icon" href="assets/icon-192.png">
 
     <!-- Core Pure CSS Design System -->
-    <link rel="stylesheet" href="css/styles.css?v=122">
+    <link rel="stylesheet" href="css/styles.css?v=123">
 
     <!-- Immediate Service Worker & Cache Invalidation Script -->
     <script>
       (function() {
-        var v = 'v122';
+        var v = 'v123';
         if (localStorage.getItem('pinPotha_active_build') !== v) {
           localStorage.setItem('pinPotha_active_build', v);
-          try {
-            localStorage.removeItem('pinPotha_posts');
-            localStorage.removeItem('pinPotha_sandbox_posts');
-          } catch(e) {}
           if ('caches' in window) {
             caches.keys().then(function(keys) {
-              keys.forEach(function(k) { caches.delete(k); });
+              keys.forEach(function(k) {
+                if (k !== 'pin-potha-cache-' + v) {
+                  caches.delete(k);
+                }
+              });
             });
           }
           if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(regs) {
-              regs.forEach(function(r) {
-                try { r.unregister(); } catch(e){}
-              });
+              regs.forEach(function(r) { try { r.update(); } catch(e){} });
             });
           }
         }
@@ -3355,6 +3353,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <!-- Application ES Modules -->
-    <script type="module" src="js/app.js?v=122"></script>
+    <script type="module" src="js/app.js?v=123"></script>
 </body>
 </html>

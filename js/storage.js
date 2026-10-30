@@ -43,7 +43,7 @@ const SEED_NOTIFICATIONS = [];
 
 export const StorageService = {
   _cachedPosts: null,
-  FEED_PAGE_SIZE: 50,
+  FEED_PAGE_SIZE: 20,
   _lastVisibleDoc: null,
   _hasMorePosts: true,
   _isLoadingMore: false,
@@ -519,8 +519,12 @@ export const StorageService = {
           }
         });
 
-        // Real-time Firestore Feed Subscription - Comprehensive Stream (All Merit, Need & Official Posts)
-        const q = collection(db, COLLECTIONS.POSTS);
+        // Real-time Firestore Feed Subscription - Paginated Stream (Top 20 Posts for ultra-fast startup)
+        const q = query(
+          collection(db, COLLECTIONS.POSTS),
+          orderBy("timestamp", "desc"),
+          limit(this.FEED_PAGE_SIZE)
+        );
         onSnapshot(q, (snapshot) => {
           const deletedIds = this.getDeletedPostIds();
           const posts = [];
@@ -556,21 +560,37 @@ export const StorageService = {
             }
           });
 
-          // Sort newest to oldest
-          posts.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+          // Track pagination cursor
+          if (snapshot.docs && snapshot.docs.length > 0) {
+            this._lastVisibleDoc = snapshot.docs[snapshot.docs.length - 1];
+            this._hasMorePosts = snapshot.docs.length >= this.FEED_PAGE_SIZE;
+          }
 
-          this._loadedPosts = posts;
-          this._cachedPosts = posts;
-          this._hasMorePosts = false;
+          // If user had already loaded deeper pages, preserve them
+          if (this._loadedPosts && this._loadedPosts.length > this.FEED_PAGE_SIZE) {
+            const topPageIds = new Set(posts.map(p => p.id));
+            const deeperPosts = this._loadedPosts.filter(p => !topPageIds.has(p.id));
+            this._loadedPosts = [...posts, ...deeperPosts];
+          } else {
+            this._loadedPosts = posts;
+          }
+
+          this._cachedPosts = this._loadedPosts;
           this.syncPostsWithUserSadhus(this._loadedPosts);
           this.cacheLocal(this._loadedPosts);
           this.notifyListeners(this._loadedPosts);
         }, (error) => {
-          console.warn('[Firestore] Realtime error, falling back to local cache', error);
-          const localPosts = this.getLocalPosts();
-          this.syncPostsWithUserSadhus(localPosts);
-          this.notifyListeners(localPosts);
+          console.warn('[Firestore] Realtime error, falling back to local cache & REST:', error);
+          this.fallbackFastFetch();
         });
+
+        // Feed Watchdog: Guarantee that feed renders within 2500ms even if WebSocket / SDK is blocked
+        setTimeout(() => {
+          if (!this._loadedPosts || this._loadedPosts.length === 0) {
+            console.log('[Storage] Watchdog: Initiating fast REST feed bootstrap...');
+            this.fallbackFastFetch();
+          }
+        }, 2500);
 
         // Real-time Firestore Notifications Subscription for authenticated user
         if (this.currentUser && this.currentUser.uid && !this.currentUser.isAnonymous) {
@@ -627,6 +647,7 @@ export const StorageService = {
       } catch (err) {
         console.warn('[Firebase] Init failed, running in secure Sandbox mode:', err);
         isCloudReady = false;
+        this.fallbackFastFetch();
       }
     }
 
@@ -900,58 +921,196 @@ export const StorageService = {
     this._isLoadingMore = false;
   },
 
+  async fallbackFastFetch() {
+    try {
+      const posts = await this.fetchPostsViaREST(this.FEED_PAGE_SIZE);
+      if (Array.isArray(posts) && posts.length > 0) {
+        this._loadedPosts = posts;
+        this._cachedPosts = posts;
+        this._hasMorePosts = posts.length >= this.FEED_PAGE_SIZE;
+        this.syncPostsWithUserSadhus(this._loadedPosts);
+        this.cacheLocal(this._loadedPosts);
+        this.notifyListeners(this._loadedPosts);
+        return;
+      }
+    } catch (e) {
+      console.warn('[Storage] Fast REST fetch note:', e);
+    }
+    const localPosts = this.getLocalPosts();
+    this.syncPostsWithUserSadhus(localPosts);
+    this.notifyListeners(localPosts);
+  },
+
+  parseFirestoreRestDoc(doc) {
+    if (!doc) return null;
+    const f = doc.fields || {};
+    const id = doc.name ? doc.name.split('/').pop() : '';
+    const rawSadhu = f.sadhuCount?.integerValue ? parseInt(f.sadhuCount.integerValue, 10) : 0;
+    const rawTs = f.timestamp?.integerValue ? parseInt(f.timestamp.integerValue, 10) : (doc.createTime ? Date.parse(doc.createTime) : Date.now());
+
+    const comments = [];
+    if (f.comments?.arrayValue?.values) {
+      f.comments.arrayValue.values.forEach(cv => {
+        const cf = cv.mapValue?.fields || {};
+        comments.push({
+          id: cf.id?.stringValue || '',
+          uid: cf.uid?.stringValue || '',
+          name: cf.name?.stringValue || '',
+          author: cf.author?.stringValue || cf.name?.stringValue || '',
+          text: cf.text?.stringValue || '',
+          timestamp: cf.timestamp?.integerValue ? parseInt(cf.timestamp.integerValue, 10) : Date.now()
+        });
+      });
+    }
+
+    const rawImgs = f.images?.arrayValue?.values?.map(v => v.stringValue).filter(Boolean) || [];
+    const primaryImg = f.image?.stringValue || (rawImgs.length > 0 ? rawImgs[0] : null);
+    if (primaryImg && !rawImgs.includes(primaryImg)) {
+      rawImgs.unshift(primaryImg);
+    }
+
+    const postObj = {
+      id,
+      uid: f.uid?.stringValue || '',
+      author: f.author?.stringValue || 'සාමාජික',
+      authorPhoto: f.authorPhoto?.stringValue || null,
+      authorRole: f.authorRole?.stringValue || 'member',
+      authorEmail: f.authorEmail?.stringValue || null,
+      title: f.title?.stringValue || '',
+      description: f.description?.stringValue || '',
+      category: f.category?.stringValue || 'සාමාන්‍ය',
+      type: f.type?.stringValue || 'merit',
+      visibility: f.visibility?.stringValue || 'public',
+      location: f.location?.stringValue || '',
+      contact: f.contact?.stringValue || '',
+      image: primaryImg,
+      images: rawImgs,
+      sadhuCount: Math.max(0, rawSadhu),
+      sadhuUsers: f.sadhuUsers?.arrayValue?.values?.map(v => v.stringValue).filter(Boolean) || [],
+      comments: comments,
+      isOfficial: Boolean(f.isOfficial?.booleanValue),
+      isPinned: Boolean(f.isPinned?.booleanValue),
+      isVerifiedNeed: Boolean(f.isVerifiedNeed?.booleanValue),
+      isDeleted: Boolean(f.isDeleted?.booleanValue),
+      timestamp: rawTs,
+      date: f.date?.stringValue || 'දැන්',
+      videoId: f.videoId?.stringValue || null,
+      videoUrl: f.videoUrl?.stringValue || null,
+      videoType: f.videoType?.stringValue || null,
+      isShorts: Boolean(f.isShorts?.booleanValue),
+      videoThumbnail: f.videoThumbnail?.stringValue || null,
+      shareCount: f.shareCount?.integerValue ? parseInt(f.shareCount.integerValue, 10) : 0,
+      repostCount: f.repostCount?.integerValue ? parseInt(f.repostCount.integerValue, 10) : 0
+    };
+    postObj.isOfficial = this.isOfficialPost(postObj);
+    return postObj;
+  },
+
+  async fetchPostsViaREST(limitCount = 20, startAfterTimestamp = null) {
+    try {
+      const url = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents:runQuery?key=${firebaseConfig.apiKey}`;
+      const queryPayload = {
+        structuredQuery: {
+          from: [{ collectionId: COLLECTIONS.POSTS }],
+          orderBy: [{ field: { fieldPath: 'timestamp' }, direction: 'DESCENDING' }],
+          limit: limitCount
+        }
+      };
+      if (startAfterTimestamp) {
+        queryPayload.structuredQuery.startAt = {
+          values: [{ integerValue: String(startAfterTimestamp) }],
+          before: false
+        };
+      }
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(queryPayload)
+      });
+      if (!response.ok) return [];
+      const data = await response.json();
+      const posts = [];
+      data.forEach(item => {
+        if (!item.document) return;
+        const p = this.parseFirestoreRestDoc(item.document);
+        if (p && !this.isDummyTestPost(p)) {
+          posts.push(p);
+        }
+      });
+      return posts;
+    } catch (e) {
+      console.warn('[Storage] fetchPostsViaREST error:', e);
+      return [];
+    }
+  },
+
   async fetchMorePosts() {
     if (this._isLoadingMore || !this._hasMorePosts) {
       return { success: false, hasMore: this._hasMorePosts, count: 0 };
     }
 
-    if (!isCloudReady || !db || !this._lastVisibleDoc) {
-      this._hasMorePosts = false;
-      return { success: false, hasMore: false, count: 0 };
-    }
-
     this._isLoadingMore = true;
     try {
-      const { collection, getDocs, query, orderBy, limit, startAfter } = await import('https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js');
-      const qNext = query(
-        collection(db, COLLECTIONS.POSTS),
-        orderBy("timestamp", "desc"),
-        startAfter(this._lastVisibleDoc),
-        limit(this.FEED_PAGE_SIZE)
-      );
-
-      const snap = await getDocs(qNext);
-      const docsCount = snap.docs.length;
-      if (docsCount === 0) {
-        this._hasMorePosts = false;
-        this._isLoadingMore = false;
-        return { success: true, hasMore: false, count: 0 };
-      }
-
-      this._lastVisibleDoc = snap.docs[docsCount - 1];
-      if (docsCount < this.FEED_PAGE_SIZE) {
-        this._hasMorePosts = false;
-      }
-
       const deletedIds = this.getDeletedPostIds();
-      const newBatch = [];
-      snap.forEach(docSnap => {
-        const data = docSnap.data();
-        if (this.isDummyTestPost({ id: docSnap.id, ...data })) return;
-        if (!deletedIds.includes(docSnap.id) && data.isDeleted !== true) {
-          const rawSadhu = typeof data.sadhuCount === 'number' ? data.sadhuCount : 0;
-          newBatch.push({
-            id: docSnap.id,
-            ...data,
-            sadhuCount: Math.max(0, rawSadhu),
-            sadhuUsers: Array.isArray(data.sadhuUsers) ? data.sadhuUsers : []
-          });
+      let newBatch = [];
+
+      if (isCloudReady && db && this._lastVisibleDoc) {
+        const { collection, getDocs, query, orderBy, limit, startAfter } = await import('https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js');
+        const qNext = query(
+          collection(db, COLLECTIONS.POSTS),
+          orderBy("timestamp", "desc"),
+          startAfter(this._lastVisibleDoc),
+          limit(this.FEED_PAGE_SIZE)
+        );
+
+        const snap = await getDocs(qNext);
+        const docsCount = snap.docs.length;
+        if (docsCount === 0) {
+          this._hasMorePosts = false;
+          this._isLoadingMore = false;
+          return { success: true, hasMore: false, count: 0 };
         }
-      });
+
+        this._lastVisibleDoc = snap.docs[docsCount - 1];
+        if (docsCount < this.FEED_PAGE_SIZE) {
+          this._hasMorePosts = false;
+        }
+
+        snap.forEach(docSnap => {
+          const data = docSnap.data();
+          if (this.isDummyTestPost({ id: docSnap.id, ...data })) return;
+          if (!deletedIds.includes(docSnap.id) && data.isDeleted !== true) {
+            const rawSadhu = typeof data.sadhuCount === 'number' ? data.sadhuCount : 0;
+            const normTimestamp = typeof data.timestamp === 'number' ? data.timestamp : (data.serverCreatedAt?.toMillis ? data.serverCreatedAt.toMillis() : (data.date ? Date.parse(data.date) || Date.now() : Date.now()));
+            newBatch.push({
+              id: docSnap.id,
+              ...data,
+              timestamp: normTimestamp,
+              isOfficial: this.isOfficialPost(data),
+              sadhuCount: Math.max(0, rawSadhu),
+              sadhuUsers: Array.isArray(data.sadhuUsers) ? data.sadhuUsers : []
+            });
+          }
+        });
+      } else {
+        // Fallback: Paginate via REST API with timestamp cursor
+        const lastPost = this._loadedPosts[this._loadedPosts.length - 1];
+        const lastTs = lastPost ? (lastPost.timestamp || 0) : Date.now();
+        const restPosts = await this.fetchPostsViaREST(this.FEED_PAGE_SIZE, lastTs);
+        if (restPosts.length === 0) {
+          this._hasMorePosts = false;
+        } else {
+          if (restPosts.length < this.FEED_PAGE_SIZE) {
+            this._hasMorePosts = false;
+          }
+          newBatch = restPosts.filter(p => !deletedIds.includes(p.id) && p.isDeleted !== true && !this.isDummyTestPost(p));
+        }
+      }
 
       const currentIds = new Set(this._loadedPosts.map(p => p.id));
       const filteredNew = newBatch.filter(p => !currentIds.has(p.id));
       this._loadedPosts = [...this._loadedPosts, ...filteredNew];
+      this._cachedPosts = this._loadedPosts;
 
       this.syncPostsWithUserSadhus(this._loadedPosts);
       this.cacheLocal(this._loadedPosts);

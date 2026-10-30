@@ -4,8 +4,8 @@
  * ============================================================================
  */
 
-import { StorageService } from './storage.js?v=122';
-import { Security } from './security.js?v=122';
+import { StorageService } from './storage.js?v=123';
+import { Security } from './security.js?v=123';
 import { uploadToImgBB } from './imgbb-service.js?v=66';
 import { SoundService, triggerHaptic } from './sound.js?v=66';
 import { FeedAlgorithm } from './algorithm.js?v=66';
@@ -343,7 +343,11 @@ function bootApp() {
   });
 
   setupEventListeners();
-  initPWAEngine();
+  try {
+    initPWAEngine();
+  } catch (pwaErr) {
+    console.warn('[PWA] Init error caught safely:', pwaErr);
+  }
 
   // 2. ASYNC BACKGROUND CLOUD BOOTSTRAP:
   // Connect to Firestore asynchronously in background without freezing UI or delay
@@ -9044,15 +9048,15 @@ let deferredPwaPrompt = null;
 let newWorkerWaiting = null;
 
 function initPWAEngine() {
-  // Check standalone mode
-  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
-                       window.navigator.standalone === true;
+  // Check standalone mode safely
+  const isStandalone = (typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(display-mode: standalone)')?.matches) || 
+                       (window.navigator && window.navigator.standalone === true);
 
-  // iOS Safari detection
-  const isIos = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase()) && !window.MSStream;
+  // iOS Safari detection safely
+  const isIos = (typeof window !== 'undefined' && window.navigator && /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase())) && !window.MSStream;
 
   // Purge any stale caches from previous builds
-  const ACTIVE_BUILD = 'v119';
+  const ACTIVE_BUILD = 'v123';
   if (localStorage.getItem('pinPotha_active_build') !== ACTIVE_BUILD) {
     localStorage.setItem('pinPotha_active_build', ACTIVE_BUILD);
     if ('caches' in window) {
@@ -9066,10 +9070,18 @@ function initPWAEngine() {
     }
   }
 
-  // Register Service Worker
-  if ('serviceWorker' in navigator) {
+  // Register Service Worker safely
+  if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+    const registerSW = () => {
+      navigator.serviceWorker.register('./sw.js?v=123', { updateViaCache: 'none' });
+    };
+    if (document.readyState === 'complete') {
+      registerSW();
+    } else {
+      window.addEventListener('load', registerSW);
+    }
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js?v=119', { updateViaCache: 'none' })
+      navigator.serviceWorker.register('./sw.js?v=123', { updateViaCache: 'none' })
         .then((registration) => {
           // Immediately check for service worker updates
           try { registration.update(); } catch (e) {}
