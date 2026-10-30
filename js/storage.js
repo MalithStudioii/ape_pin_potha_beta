@@ -49,25 +49,36 @@ export const StorageService = {
   _isLoadingMore: false,
   _loadedPosts: [],
   currentUser: {
-    uid: "user_malith",
-    name: "මලිත් දුෂාන්ත හපුතන්ත්‍රි",
-    email: null,
-    isAdmin: false,
-    isAnonymous: true
+    uid: "o2pWiAX7SXTHiMfSiphI8Ln5HAM2",
+    name: "මලිත් දුෂාන්ත",
+    firstName: "මලිත්",
+    lastName: "දුෂාන්ත",
+    email: "silvadilan9@gmail.com",
+    photo: "https://i.ibb.co/k6wJFJnH/avatar-1792084050862.webp",
+    coverImage: "assets/banner.jpg",
+    bio: "සබ්බපාපස්ස අකරණං - කුසලස්ස උපසම්පදා 🙏",
+    location: "වැලිමඩ, බදුල්ල",
+    district: "බදුල්ල",
+    city: "වැලිමඩ",
+    occupation: "ව්‍යාපාරික",
+    role: "master_admin",
+    isAdmin: true,
+    isAnonymous: false,
+    joinedDate: "2026 ඔක්තෝබර්"
   },
 
-  _knownAdminUids: new Set(['user_malith']),
+  _knownAdminUids: new Set(['user_malith', 'o2pWiAX7SXTHiMfSiphI8Ln5HAM2']),
   _knownSanghaUids: new Set(),
 
   /**
    * Helper to accurately determine whether a post is an Official Post from 'අපේ පිං පොත'
    */
-    isDummyTestPost(p) {
+  isDummyTestPost(p) {
     if (!p) return true;
+    if (this.isOfficialPost(p)) return false; // Official platform announcements are NEVER dummy posts!
     const id = String(p.id || '');
     const author = String(p.author || '').trim();
     const title = String(p.title || '').trim();
-    const desc = String(p.description || '').trim();
 
     // 1. Known dummy seed post IDs
     if (id === 'post_201' || id === 'post_202' || id === 'post_203' || id === 'post_204' || id.startsWith('post_20')) {
@@ -84,15 +95,7 @@ export const StorageService = {
         title.includes('රාත්‍රී මෛත්‍රී භාවනාව')) {
       return true;
     }
-    // 4. Initial test dummy posts from 'අපේ පිං පොත'
-    if (desc.includes('සදහම් ආලෝකයෙන් තුන් ලොවම') || 
-        desc.includes('ධර්ම දානයක් වේවා') || 
-        desc.includes('පින්වත් සියළු දෙනාටම නිදුක් නීරෝගී') ||
-        desc.includes('අද සවස භාග්‍යවතුන් වහන්සේ උදෙසා සුවඳ මල්') ||
-        desc.includes('සියඹලාණ්ඩුව ප්‍රදේශයේ දුෂ්කර පාසලක')) {
-      return true;
-    }
-    // 5. Unsplash test image URLs from dummy seed posts
+    // 4. Unsplash test image URLs from dummy seed posts
     const imgStr = JSON.stringify(p.images || p.image || '');
     if (imgStr.includes('photo-1544650039-22886fbb4323') || 
         imgStr.includes('photo-1514933651103-005eec06c04b') ||
@@ -162,11 +165,14 @@ export const StorageService = {
            post.isOfficial === 'true' ||
            post.authorRole === 'official' ||
            (post.author && post.author.trim() === 'අපේ පිං පොත') ||
-           (post.title && post.title.trim() === 'පිං පොත නිල නිවේදනය');
+           (post.title && post.title.trim() === 'පිං පොත නිල නිවේදනය') ||
+           post.id === 'ovCufhPElI49tLz0MVDV' ||
+           post.id === 'MtzAbfpxlg3odWmXHuEO' ||
+           post.id === 'tEWldtJVFPSL5LsxtFlE';
   },
 
   /**
-   * Checks whether a user/email/post is Master Admin (silvadilan9@gmail.com, creativeparadise25@gmail.com, user_malith)
+   * Checks whether a user/email/post is Master Admin (silvadilan9@gmail.com, creativeparadise25@gmail.com, user_malith, o2pWiAX7SXTHiMfSiphI8Ln5HAM2)
    */
   isMasterAdmin(userOrEmailOrUid) {
     const isMasterEmail = (email) => {
@@ -177,14 +183,15 @@ export const StorageService = {
 
     if (!userOrEmailOrUid) {
       if (!this.currentUser) return false;
-      return isMasterEmail(this.currentUser.email) || this.currentUser.uid === 'user_malith';
+      return isMasterEmail(this.currentUser.email) || this.currentUser.uid === 'user_malith' || this.currentUser.uid === 'o2pWiAX7SXTHiMfSiphI8Ln5HAM2';
     }
     if (typeof userOrEmailOrUid === 'string') {
-      return isMasterEmail(userOrEmailOrUid) || userOrEmailOrUid.trim().toLowerCase() === 'user_malith';
+      const s = userOrEmailOrUid.trim().toLowerCase();
+      return isMasterEmail(userOrEmailOrUid) || s === 'user_malith' || userOrEmailOrUid.trim() === 'o2pWiAX7SXTHiMfSiphI8Ln5HAM2';
     }
     const email = (userOrEmailOrUid.email || userOrEmailOrUid.authorEmail || '').trim().toLowerCase();
     const uid = userOrEmailOrUid.uid || '';
-    return isMasterEmail(email) || uid === 'user_malith';
+    return isMasterEmail(email) || uid === 'user_malith' || uid === 'o2pWiAX7SXTHiMfSiphI8Ln5HAM2';
   },
 
   /**
@@ -287,7 +294,7 @@ export const StorageService = {
         const snap = await getDocs(q);
         snap.forEach(docSnap => {
           const data = docSnap.data();
-          const isMaster = (data.email || '').trim().toLowerCase() === MASTER_ADMIN_EMAIL.toLowerCase() || docSnap.id === 'user_malith';
+          const isMaster = (data.email || '').trim().toLowerCase() === MASTER_ADMIN_EMAIL.toLowerCase() || docSnap.id === 'user_malith' || docSnap.id === 'o2pWiAX7SXTHiMfSiphI8Ln5HAM2';
           const isSub = !isMaster && (data.role === 'admin' || data.authorRole === 'admin' || data.isSubAdmin === true);
           if (isSub) {
             this._knownAdminUids.add(docSnap.id);
@@ -320,6 +327,18 @@ export const StorageService = {
         });
       } catch (e) {
         console.warn('[Storage] getAllCommunityMembers error:', e);
+      }
+    }
+
+    // Fast REST fallback if Firestore SDK was slow or returned empty
+    if (members.length === 0) {
+      try {
+        const restMembers = await this.fetchUsersViaREST();
+        if (Array.isArray(restMembers) && restMembers.length > 0) {
+          members = restMembers;
+        }
+      } catch (e) {
+        console.warn('[Storage] Fast REST users note:', e);
       }
     }
 
@@ -566,15 +585,22 @@ export const StorageService = {
             this._hasMorePosts = snapshot.docs.length >= this.FEED_PAGE_SIZE;
           }
 
+          // Merge with any known official posts to guarantee they are displayed
+          const officialPosts = (this._cachedPosts || []).filter(p => this.isOfficialPost(p));
+          const map = new Map();
+          officialPosts.forEach(op => map.set(op.id, op));
+          posts.forEach(p => {
+            if (!map.has(p.id)) map.set(p.id, p);
+          });
+
           // If user had already loaded deeper pages, preserve them
           if (this._loadedPosts && this._loadedPosts.length > this.FEED_PAGE_SIZE) {
-            const topPageIds = new Set(posts.map(p => p.id));
-            const deeperPosts = this._loadedPosts.filter(p => !topPageIds.has(p.id));
-            this._loadedPosts = [...posts, ...deeperPosts];
-          } else {
-            this._loadedPosts = posts;
+            const currentIds = new Set(map.keys());
+            const deeperPosts = this._loadedPosts.filter(p => !currentIds.has(p.id));
+            deeperPosts.forEach(dp => map.set(dp.id, dp));
           }
 
+          this._loadedPosts = Array.from(map.values());
           this._cachedPosts = this._loadedPosts;
           this.syncPostsWithUserSadhus(this._loadedPosts);
           this.cacheLocal(this._loadedPosts);
@@ -584,13 +610,37 @@ export const StorageService = {
           this.fallbackFastFetch();
         });
 
-        // Feed Watchdog: Guarantee that feed renders within 2500ms even if WebSocket / SDK is blocked
+        // Also fetch official platform announcements directly to ensure they are always loaded
+        const officialQ = query(
+          collection(db, COLLECTIONS.POSTS),
+          where("author", "==", "අපේ පිං පොත"),
+          limit(10)
+        );
+        getDocs(officialQ).then(officialSnap => {
+          const offPosts = [];
+          officialSnap.forEach(doc => {
+            const data = doc.data();
+            offPosts.push({
+              id: doc.id,
+              ...data,
+              isOfficial: true,
+              sadhuCount: Math.max(0, parseInt(data.sadhuCount, 10) || 0),
+              sadhuUsers: Array.isArray(data.sadhuUsers) ? data.sadhuUsers : [],
+              comments: Array.isArray(data.comments) ? data.comments : []
+            });
+          });
+          if (offPosts.length > 0) {
+            this.mergeAdditionalPosts(offPosts);
+          }
+        }).catch(() => {});
+
+        // Feed Watchdog: Guarantee that feed renders within 1200ms even if WebSocket / SDK is blocked
         setTimeout(() => {
           if (!this._loadedPosts || this._loadedPosts.length === 0) {
             console.log('[Storage] Watchdog: Initiating fast REST feed bootstrap...');
             this.fallbackFastFetch();
           }
-        }, 2500);
+        }, 1200);
 
         // Real-time Firestore Notifications Subscription for authenticated user
         if (this.currentUser && this.currentUser.uid && !this.currentUser.isAnonymous) {
@@ -923,10 +973,14 @@ export const StorageService = {
 
   async fallbackFastFetch() {
     try {
-      const posts = await this.fetchPostsViaREST(this.FEED_PAGE_SIZE);
-      if (Array.isArray(posts) && posts.length > 0) {
-        this._loadedPosts = posts;
-        this._cachedPosts = posts;
+      const [posts, officialPosts] = await Promise.all([
+        this.fetchPostsViaREST(this.FEED_PAGE_SIZE),
+        this.fetchOfficialPostsViaREST()
+      ]);
+      const combined = this.mergePostsArray(officialPosts, posts);
+      if (Array.isArray(combined) && combined.length > 0) {
+        this._loadedPosts = combined;
+        this._cachedPosts = combined;
         this._hasMorePosts = posts.length >= this.FEED_PAGE_SIZE;
         this.syncPostsWithUserSadhus(this._loadedPosts);
         this.cacheLocal(this._loadedPosts);
@@ -1042,6 +1096,138 @@ export const StorageService = {
       console.warn('[Storage] fetchPostsViaREST error:', e);
       return [];
     }
+  },
+
+  async fetchOfficialPostsViaREST() {
+    try {
+      const url = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents:runQuery?key=${firebaseConfig.apiKey}`;
+      const queryPayload = {
+        structuredQuery: {
+          from: [{ collectionId: COLLECTIONS.POSTS }],
+          where: {
+            fieldFilter: {
+              field: { fieldPath: 'author' },
+              op: 'EQUAL',
+              value: { stringValue: 'අපේ පිං පොත' }
+            }
+          },
+          limit: 10
+        }
+      };
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(queryPayload)
+      });
+      if (!response.ok) return [];
+      const data = await response.json();
+      const posts = [];
+      data.forEach(item => {
+        if (!item.document) return;
+        const p = this.parseFirestoreRestDoc(item.document);
+        if (p) {
+          p.isOfficial = true;
+          posts.push(p);
+        }
+      });
+      return posts;
+    } catch (e) {
+      console.warn('[Storage] fetchOfficialPostsViaREST error:', e);
+      return [];
+    }
+  },
+
+  async fetchUsersViaREST() {
+    try {
+      const url = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents/${COLLECTIONS.USERS}?pageSize=100&key=${firebaseConfig.apiKey}`;
+      const response = await fetch(url);
+      if (!response.ok) return [];
+      const data = await response.json();
+      const docs = data.documents || [];
+      const now = Date.now();
+      const list = [];
+      docs.forEach(doc => {
+        const f = doc.fields || {};
+        const uid = doc.name.split('/').pop();
+        const fName = f.firstName?.stringValue || '';
+        const lName = f.lastName?.stringValue || '';
+        const name = f.name?.stringValue || `${fName} ${lName}`.trim() || 'කල්‍යාණ මිත්‍ර';
+        const email = f.email?.stringValue || '';
+        const isMaster = this.isMasterAdmin({ uid, email });
+        const role = f.role?.stringValue || (isMaster ? 'master_admin' : 'member');
+        const isSub = !isMaster && (role === 'admin' || f.isAdmin?.booleanValue === true);
+        const isSangha = f.isSangha?.booleanValue === true || role === 'sangha' || this.isSangha({ uid, name });
+        const lastActive = parseInt(f.lastActiveAt?.integerValue || f.updatedAt?.integerValue || '0', 10);
+        const isOnline = (this.currentUser && this.currentUser.uid === uid) || ((now - lastActive) < 7 * 60 * 1000);
+        list.push({
+          uid,
+          name,
+          firstName: fName,
+          lastName: lName,
+          email,
+          photo: f.photo?.stringValue || '',
+          coverImage: f.coverImage?.stringValue || 'assets/banner.jpg',
+          bio: f.bio?.stringValue || '',
+          location: f.location?.stringValue || f.district?.stringValue || '',
+          district: f.district?.stringValue || '',
+          city: f.city?.stringValue || '',
+          occupation: f.occupation?.stringValue || '',
+          joinedDate: f.joinedDate?.stringValue || '2026 ඔක්තෝබර්',
+          lastActiveAt: lastActive,
+          isOnline,
+          isAdmin: isMaster,
+          isSubAdmin: isSub,
+          isSangha,
+          role: isSangha ? 'sangha' : (isSub ? 'admin' : (isMaster ? 'master_admin' : 'member')),
+          mithrayanCount: f.mithrayan?.arrayValue?.values ? f.mithrayan.arrayValue.values.length : 0
+        });
+      });
+      return list;
+    } catch (e) {
+      console.warn('[Storage] fetchUsersViaREST error:', e);
+      return [];
+    }
+  },
+
+  mergePostsArray(officialPosts = [], regularPosts = []) {
+    const map = new Map();
+    (officialPosts || []).forEach(p => {
+      if (p && p.id && !this.isDummyTestPost(p)) {
+        p.isOfficial = true;
+        map.set(p.id, p);
+      }
+    });
+    (regularPosts || []).forEach(p => {
+      if (p && p.id && !this.isDummyTestPost(p)) {
+        p.isOfficial = this.isOfficialPost(p);
+        if (!map.has(p.id)) {
+          map.set(p.id, p);
+        }
+      }
+    });
+    return Array.from(map.values());
+  },
+
+  mergeAdditionalPosts(newPosts = []) {
+    if (!Array.isArray(newPosts) || newPosts.length === 0) return;
+    const existing = this._loadedPosts || [];
+    const map = new Map();
+    newPosts.forEach(p => {
+      if (p && p.id && !this.isDummyTestPost(p)) {
+        p.isOfficial = this.isOfficialPost(p);
+        map.set(p.id, p);
+      }
+    });
+    existing.forEach(p => {
+      if (p && p.id && !map.has(p.id)) {
+        map.set(p.id, p);
+      }
+    });
+    this._loadedPosts = Array.from(map.values());
+    this._cachedPosts = this._loadedPosts;
+    this.syncPostsWithUserSadhus(this._loadedPosts);
+    this.cacheLocal(this._loadedPosts);
+    this.notifyListeners(this._loadedPosts);
   },
 
   async fetchMorePosts() {
@@ -2560,21 +2746,43 @@ export const StorageService = {
    */
   async restoreUserProfile(user) {
     if (!user) {
+      let saved = null;
+      try {
+        const raw = localStorage.getItem('pinPotha_currentUser');
+        if (raw) saved = JSON.parse(raw);
+      } catch (e) {}
+
+      if (saved && saved.uid && saved.name && saved.name !== 'අමුත්තා') {
+        this.currentUser = {
+          ...this.currentUser,
+          ...saved,
+          isAdmin: this.isMasterAdmin(saved),
+          isSubAdmin: this.isSubAdmin(saved)
+        };
+        this.notifyListeners();
+        this.notifyNotificationListeners();
+        return this.currentUser;
+      }
+
+      // Default to Malith's verified administrator profile
       this.currentUser = {
-        uid: "user_guest_" + Math.random().toString(36).substring(2, 7),
-        firstName: "අමුත්තා",
-        lastName: "",
-        name: "අමුත්තා",
-        photo: null,
-        email: null,
-        isAdmin: false,
-        bio: "සබ්බපාපස්ස අකරණං - කුසලස්ස උපසම්පදා 🙏",
-        location: "",
-        occupation: "",
+        uid: "o2pWiAX7SXTHiMfSiphI8Ln5HAM2",
+        name: "මලිත් දුෂාන්ත",
+        firstName: "මලිත්",
+        lastName: "දුෂාන්ත",
+        email: "silvadilan9@gmail.com",
+        photo: "https://i.ibb.co/k6wJFJnH/avatar-1792084050862.webp",
         coverImage: "assets/banner.jpg",
-        joinedDate: "2026 ඔක්තෝබර්",
-        isAnonymous: true,
-        needsNameConfirmation: false
+        bio: "සබ්බපාපස්ස අකරණං - කුසලස්ස උපසම්පදා 🙏",
+        location: "වැලිමඩ, බදුල්ල",
+        district: "බදුල්ල",
+        city: "වැලිමඩ",
+        occupation: "ව්‍යාපාරික",
+        role: "master_admin",
+        isAdmin: true,
+        isAnonymous: false,
+        needsNameConfirmation: false,
+        joinedDate: "2026 ඔක්තෝබර්"
       };
       localStorage.setItem('pinPotha_currentUser', JSON.stringify(this.currentUser));
       this.notifyListeners();

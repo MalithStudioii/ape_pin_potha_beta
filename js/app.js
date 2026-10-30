@@ -4,8 +4,8 @@
  * ============================================================================
  */
 
-import { StorageService } from './storage.js?v=123';
-import { Security } from './security.js?v=123';
+import { StorageService } from './storage.js?v=124';
+import { Security } from './security.js?v=124';
 import { uploadToImgBB } from './imgbb-service.js?v=66';
 import { SoundService, triggerHaptic } from './sound.js?v=66';
 import { FeedAlgorithm } from './algorithm.js?v=66';
@@ -150,7 +150,9 @@ window.toggleSoundPreference = function(e) {
 
 export function isGuestUser() {
   const user = StorageService.currentUser;
-  return !user || user.isAnonymous || !user.email;
+  if (!user) return true;
+  if (typeof StorageService.isMasterAdmin === 'function' && StorageService.isMasterAdmin(user)) return false;
+  return user.isAnonymous === true && !user.email;
 }
 window.isGuestUser = isGuestUser;
 
@@ -269,7 +271,7 @@ function bootApp() {
   updateUserInfoUI();
   updateUserStats();
   renderSideNeeds();
-  // PC sidebar members loaded asynchronously during cloud bootstrap
+  renderPcSidebarMembers().catch(() => {});
 
   // Load initial global announcement, daily verse, and Poya calendar from storage
   const initialAnnounce = StorageService.getAdminAnnouncement();
@@ -573,7 +575,14 @@ function updateUserInfoUI() {
 
 function updateUserStats() {
   const user = StorageService.currentUser;
-  const myPosts = currentPostsData.filter(p => p.uid === user.uid);
+  const isMalithUser = Boolean(user && (user.uid === 'user_malith' || user.uid === 'o2pWiAX7SXTHiMfSiphI8Ln5HAM2' || (user.email && user.email.toLowerCase() === 'silvadilan9@gmail.com')));
+  const myPosts = currentPostsData.filter(p => {
+    if (!p) return false;
+    if (user && p.uid === user.uid) return true;
+    if (user && user.email && p.authorEmail && p.authorEmail.toLowerCase() === user.email.toLowerCase()) return true;
+    if (isMalithUser && (p.uid === 'user_malith' || p.uid === 'o2pWiAX7SXTHiMfSiphI8Ln5HAM2' || p.author === 'මලිත් දුෂාන්ත' || p.author === 'අපේ පිං පොත')) return true;
+    return false;
+  });
   const totalSadhu = myPosts.reduce((acc, p) => acc + (p.sadhuCount || 0), 0);
 
   const statPostsEl = document.getElementById('statMyPosts');
@@ -2573,11 +2582,6 @@ function triggerSadhuFloatingAnimation(target, posY) {
 
 // Global actions exposed to HTML
 window.handleSadhuClick = async function(postId, btnElement) {
-  if (isGuestUser()) {
-    showAuthRequiredModal('සාදුකාර ලබා දීමට');
-    return;
-  }
-
   // Prevent double taps
   if (!window._sadhuClickBusy) window._sadhuClickBusy = {};
   if (window._sadhuClickBusy[postId]) return;
@@ -2715,11 +2719,6 @@ window.toggleCommentsSection = function(postId) {
 };
 
 window.submitQuickBlessing = async function(postId, text) {
-  if (isGuestUser()) {
-    showAuthRequiredModal('ප්‍රාර්ථනා / ආශිර්වාද එක් කිරීමට');
-    return;
-  }
-
   window._commentSubmitting = window._commentSubmitting || {};
   if (window._commentSubmitting[postId]) return;
   window._commentSubmitting[postId] = true;
@@ -4515,7 +4514,7 @@ document.addEventListener('touchcancel', () => {
   photoTouchMoved = false;
 });
 
-// Desktop Mouse Click & Fallback Browser Click Interceptor (Event Delegation - Capture Phase)
+// Desktop Mouse Click & Fallback Browser Click Interceptor (Event Delegation)
 document.addEventListener('click', (e) => {
   if (e.target.closest('.lightbox-top-bar') || e.target.closest('.lightbox-nav-btn')) return;
   if (e.target.closest('.composer-thumb-remove')) return;
@@ -4525,18 +4524,13 @@ document.addEventListener('click', (e) => {
                         e.target.closest('.gallery-card') ||
                         e.target.closest('.composer-thumb-item');
   if (isPhotoTarget) {
-    // If touchend already handled this tap, prevent duplicate execution from synthetic click
     if (Date.now() - lastPhotoTriggerTime < 450) {
-      e.preventDefault();
-      e.stopPropagation();
       return;
     }
     lastPhotoTriggerTime = Date.now();
-    e.preventDefault();
-    e.stopPropagation();
     handlePhotoOpenTarget(e.target);
   }
-}, true);
+});
 
 // Fullscreen Photo Lightbox Gestures (Swipe Left/Right, Swipe Down to Dismiss, Pinch & Double-tap Zoom)
 function initLightboxTouchGestures() {
@@ -9056,7 +9050,7 @@ function initPWAEngine() {
   const isIos = (typeof window !== 'undefined' && window.navigator && /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase())) && !window.MSStream;
 
   // Purge any stale caches from previous builds
-  const ACTIVE_BUILD = 'v123';
+  const ACTIVE_BUILD = 'v124';
   if (localStorage.getItem('pinPotha_active_build') !== ACTIVE_BUILD) {
     localStorage.setItem('pinPotha_active_build', ACTIVE_BUILD);
     if ('caches' in window) {
@@ -9073,7 +9067,7 @@ function initPWAEngine() {
   // Register Service Worker safely
   if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
     const registerSW = () => {
-      navigator.serviceWorker.register('./sw.js?v=123', { updateViaCache: 'none' });
+      navigator.serviceWorker.register('./sw.js?v=124', { updateViaCache: 'none' });
     };
     if (document.readyState === 'complete') {
       registerSW();
@@ -9081,7 +9075,7 @@ function initPWAEngine() {
       window.addEventListener('load', registerSW);
     }
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js?v=123', { updateViaCache: 'none' })
+      navigator.serviceWorker.register('./sw.js?v=124', { updateViaCache: 'none' })
         .then((registration) => {
           // Immediately check for service worker updates
           try { registration.update(); } catch (e) {}
