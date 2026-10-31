@@ -690,6 +690,9 @@ export const StorageService = {
     }
     if (this.currentUser) {
       if (this.currentUser.name && (this.currentUser.name.trim().startsWith('මලිත්') || this.currentUser.uid === 'user_malith' || this.currentUser.uid === 'o2pWiAX7SXTHiMfSiphI8Ln5HAM2')) {
+        this.currentUser.name = 'මලිත් දුෂාන්ත';
+        this.currentUser.firstName = 'මලිත්';
+        this.currentUser.lastName = 'දුෂාන්ත';
         this.currentUser.uid = 'o2pWiAX7SXTHiMfSiphI8Ln5HAM2';
         this.currentUser.email = 'silvadilan9@gmail.com';
         this.currentUser.role = 'master_admin';
@@ -725,12 +728,8 @@ export const StorageService = {
     } catch(e) {}
 
     // Immediate zero-latency background fast REST sync for official announcements & community directory
-    this.fetchOfficialPostsViaREST().then(offPosts => {
-      if (Array.isArray(offPosts) && offPosts.length > 0) {
-        this.cacheOfficialPosts(offPosts);
-        this.mergeAdditionalPosts(offPosts);
-      }
-    }).catch(() => {});
+    // Immediate zero-latency fast REST bootstrap for BOTH community feed & official announcements
+    this.fallbackFastFetch().catch(err => console.warn('[Storage] Fast feed REST bootstrap note:', err));
 
     this.fetchUsersViaREST().then(users => {
       if (Array.isArray(users) && users.length > 0) {
@@ -902,8 +901,9 @@ export const StorageService = {
 
         // Feed Watchdog: Guarantee that feed renders within 1200ms even if WebSocket / SDK is blocked
         setTimeout(() => {
-          if (!this._loadedPosts || this._loadedPosts.length === 0) {
-            console.log('[Storage] Watchdog: Initiating fast REST feed bootstrap...');
+          const nonOfficialCount = (this._loadedPosts || []).filter(p => !this.isOfficialPost(p)).length;
+          if (nonOfficialCount === 0) {
+            console.log('[Storage] Watchdog: Community posts missing, bootstrapping fast REST feed...');
             this.fallbackFastFetch();
           }
         }, 1200);
@@ -3014,6 +3014,17 @@ export const StorageService = {
       } catch (e) {}
 
       if (saved && saved.uid && saved.name && saved.name !== 'අමුත්තා') {
+        const sName = (saved.name || '').trim();
+        if (sName.startsWith('මලිත්') || saved.uid === 'user_malith' || saved.uid === 'o2pWiAX7SXTHiMfSiphI8Ln5HAM2') {
+          saved.name = 'මලිත් දුෂාන්ත';
+          saved.firstName = 'මලිත්';
+          saved.lastName = 'දුෂාන්ත';
+          saved.uid = 'o2pWiAX7SXTHiMfSiphI8Ln5HAM2';
+          saved.email = 'silvadilan9@gmail.com';
+          saved.photo = 'https://i.ibb.co/k6wJFJnH/avatar-1792084050862.webp';
+          saved.role = 'master_admin';
+          saved.isAdmin = true;
+        }
         this.currentUser = {
           ...this.currentUser,
           ...saved,

@@ -468,10 +468,18 @@ function updateCloudBanner(isConnected) {
 
 function updateUserInfoUI() {
   const user = StorageService.currentUser;
-  const isMaster = StorageService.isMasterAdmin();
-  const isSub = StorageService.isSubAdmin(user);
+  const isMalith = Boolean(user && (
+    user.uid === "user_malith" ||
+    user.uid === "o2pWiAX7SXTHiMfSiphI8Ln5HAM2" ||
+    (user.email && user.email.toLowerCase() === "silvadilan9@gmail.com") ||
+    (user.name && user.name.trim().startsWith("මලිත්"))
+  ));
+  const isMaster = StorageService.isMasterAdmin() || isMalith;
+  const isSub = !isMaster && StorageService.isSubAdmin(user);
   const isAdminUser = isMaster || isSub;
-  const firstLetter = (user.name || 'අ').trim().charAt(0);
+  const activeName = isMalith ? "මලිත් දුෂාන්ත" : (user.name || "අමුත්තා");
+  const activePhoto = user.photo || (isMalith ? "https://i.ibb.co/k6wJFJnH/avatar-1792084050862.webp" : null);
+  const firstLetter = (activeName || "අ").trim().charAt(0);
 
   const displayEl = document.getElementById('userNameDisplay');
   const sideNameEl = document.getElementById('sideUserName');
@@ -480,8 +488,8 @@ function updateUserInfoUI() {
   const composerAvatarEl = document.getElementById('composerAvatar');
   const crownBtn = document.getElementById('headerAdminCrownBtn');
 
-  if (displayEl) displayEl.innerText = user.name || 'අමුත්තා';
-  if (sideNameEl) sideNameEl.innerText = user.name || 'අමුත්තා';
+  if (displayEl) displayEl.innerText = activeName;
+  if (sideNameEl) sideNameEl.innerText = activeName;
 
   // Toggle Header Crown Button for Master Admin & Sub-Admins
   if (crownBtn) {
@@ -529,8 +537,8 @@ function updateUserInfoUI() {
 
   const applyAvatar = (el) => {
     if (!el) return;
-    if (user.photo) {
-      el.innerHTML = `<img src="${user.photo}" alt="${user.name}" style="width: 100%; height: 100%; border-radius: 9999px; object-fit: cover; display: block;" onerror="this.parentElement.innerText='${firstLetter}';">`;
+    if (activePhoto) {
+      el.innerHTML = `<img src="${activePhoto}" alt="${activeName}" style="width: 100%; height: 100%; border-radius: 9999px; object-fit: cover; display: block;" onerror="this.parentElement.innerText='${firstLetter}';">`;
     } else {
       el.innerText = firstLetter;
     }
@@ -5407,58 +5415,6 @@ document.addEventListener('keydown', (e) => {
 function setupEventListeners() {
   initLightboxTouchGestures();
 
-  // Robust Event Delegation for Post Action Buttons (Sadhu, Comments, Repost, Share)
-  const postsContainer = document.getElementById('postsContainer');
-  if (postsContainer && !postsContainer._delegationBound) {
-    postsContainer._delegationBound = true;
-    postsContainer.addEventListener('click', (e) => {
-      // 1. Sadhu Click
-      const sadhuBtn = e.target.closest('.post-btn[id^="sadhu-btn-"], .official-sadhu-only-btn');
-      if (sadhuBtn) {
-        e.preventDefault();
-        e.stopPropagation();
-        const id = sadhuBtn.id.replace('sadhu-btn-', '');
-        if (typeof window.handleSadhuClick === 'function') {
-          window.handleSadhuClick(id, sadhuBtn);
-        }
-        return;
-      }
-      // 2. Comments Toggle
-      const commentBtn = e.target.closest('.post-btn[onclick*="toggleCommentsSection"]');
-      if (commentBtn) {
-        e.preventDefault();
-        e.stopPropagation();
-        const match = commentBtn.getAttribute('onclick')?.match(/toggleCommentsSection\('([^']+)'\)/);
-        if (match && match[1] && typeof window.toggleCommentsSection === 'function') {
-          window.toggleCommentsSection(match[1]);
-        }
-        return;
-      }
-      // 3. Repost Modal
-      const repostBtn = e.target.closest('.post-btn[onclick*="openRepostModal"]');
-      if (repostBtn) {
-        e.preventDefault();
-        e.stopPropagation();
-        const match = repostBtn.getAttribute('onclick')?.match(/openRepostModal\('([^']+)'\)/);
-        if (match && match[1] && typeof window.openRepostModal === 'function') {
-          window.openRepostModal(match[1]);
-        }
-        return;
-      }
-      // 4. Share Button
-      const shareBtn = e.target.closest('.post-btn[onclick*="handleShare"]');
-      if (shareBtn) {
-        e.preventDefault();
-        e.stopPropagation();
-        const match = shareBtn.getAttribute('onclick')?.match(/handleShare\('([^']+)'\)/);
-        if (match && match[1] && typeof window.handleShare === 'function') {
-          window.handleShare(match[1]);
-        }
-        return;
-      }
-    });
-  }
-
   let isSubmittingPost = false;
 
   document.getElementById('postForm')?.addEventListener('submit', async (e) => {
@@ -7416,8 +7372,10 @@ export async function renderPcSidebarMembers(filterQuery = '', forceRefresh = fa
     if (!container) return;
 
     // Instant zero-latency local fallback if cache is empty
-    if (!allCommunityMembersCache || allCommunityMembersCache.length === 0) {
-      if (typeof StorageService.getInstantLocalCommunityMembers === 'function') {
+    if (Array.isArray(StorageService._cachedCommunityMembers) && StorageService._cachedCommunityMembers.length > (allCommunityMembersCache?.length || 0)) {
+      allCommunityMembersCache = StorageService._cachedCommunityMembers;
+    } else if (!allCommunityMembersCache || allCommunityMembersCache.length === 0) {
+      if (typeof StorageService.getInstantLocalCommunityMembers === "function") {
         allCommunityMembersCache = StorageService.getInstantLocalCommunityMembers();
       }
     }
