@@ -118,13 +118,11 @@ export const FeedAlgorithm = {
         return bPin - aPin;
       }
 
-      // 2. In trending mode, official posts have higher hierarchy
-      if (mode === 'trending') {
-        const aOff = a.isOfficial ? 1 : 0;
-        const bOff = b.isOfficial ? 1 : 0;
-        if (bOff !== aOff) {
-          return bOff - aOff;
-        }
+      // 2. Official platform posts ALWAYS come right after pinned posts across all modes
+      const aOff = a.isOfficial ? 1 : 0;
+      const bOff = b.isOfficial ? 1 : 0;
+      if (bOff !== aOff) {
+        return bOff - aOff;
       }
 
       // 3. Mode-specific sorting

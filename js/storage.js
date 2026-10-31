@@ -69,6 +69,7 @@ export const StorageService = {
 
   _knownAdminUids: new Set(['user_malith', 'o2pWiAX7SXTHiMfSiphI8Ln5HAM2']),
   _knownSanghaUids: new Set(),
+  _cachedOfficialPosts: [],
 
   /**
    * Helper to accurately determine whether a post is an Official Post from 'අපේ පිං පොත'
@@ -169,6 +170,31 @@ export const StorageService = {
            post.id === 'ovCufhPElI49tLz0MVDV' ||
            post.id === 'MtzAbfpxlg3odWmXHuEO' ||
            post.id === 'tEWldtJVFPSL5LsxtFlE';
+  },
+
+  getOfficialPosts() {
+    if (Array.isArray(this._cachedOfficialPosts) && this._cachedOfficialPosts.length > 0) {
+      return this._cachedOfficialPosts;
+    }
+    try {
+      const raw = localStorage.getItem('pinPotha_official_posts');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          this._cachedOfficialPosts = parsed;
+          return parsed;
+        }
+      }
+    } catch (e) {}
+    return [];
+  },
+
+  cacheOfficialPosts(officialPosts) {
+    if (!Array.isArray(officialPosts) || officialPosts.length === 0) return;
+    this._cachedOfficialPosts = officialPosts;
+    try {
+      localStorage.setItem('pinPotha_official_posts', JSON.stringify(officialPosts));
+    } catch (e) {}
   },
 
   /**
@@ -498,7 +524,7 @@ export const StorageService = {
       try {
         console.log('[Storage] Initializing Firebase Modular SDK...');
         const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js');
-        const { getFirestore, collection, onSnapshot, query, orderBy, limit, startAfter, getDocs } = await import('https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js');
+        const { getFirestore, collection, onSnapshot, query, orderBy, limit, startAfter, getDocs, where } = await import('https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js');
         const { getAuth, onAuthStateChanged } = await import('https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js');
 
         const app = initializeApp(firebaseConfig);
@@ -586,9 +612,14 @@ export const StorageService = {
           }
 
           // Merge with any known official posts to guarantee they are displayed
-          const officialPosts = (this._cachedPosts || []).filter(p => this.isOfficialPost(p));
+          const officialPosts = this.getOfficialPosts();
           const map = new Map();
-          officialPosts.forEach(op => map.set(op.id, op));
+          officialPosts.forEach(op => {
+            if (op && op.id && !this.isDummyTestPost(op)) {
+              op.isOfficial = true;
+              map.set(op.id, op);
+            }
+          });
           posts.forEach(p => {
             if (!map.has(p.id)) map.set(p.id, p);
           });
@@ -610,29 +641,40 @@ export const StorageService = {
           this.fallbackFastFetch();
         });
 
-        // Also fetch official platform announcements directly to ensure they are always loaded
-        const officialQ = query(
-          collection(db, COLLECTIONS.POSTS),
-          where("author", "==", "අපේ පිං පොත"),
-          limit(10)
-        );
-        getDocs(officialQ).then(officialSnap => {
-          const offPosts = [];
-          officialSnap.forEach(doc => {
-            const data = doc.data();
-            offPosts.push({
-              id: doc.id,
-              ...data,
-              isOfficial: true,
-              sadhuCount: Math.max(0, parseInt(data.sadhuCount, 10) || 0),
-              sadhuUsers: Array.isArray(data.sadhuUsers) ? data.sadhuUsers : [],
-              comments: Array.isArray(data.comments) ? data.comments : []
+        // Real-time Firestore Subscription for Official Platform Announcements
+        try {
+          const officialQ = query(
+            collection(db, COLLECTIONS.POSTS),
+            where("isOfficial", "==", true),
+            limit(10)
+          );
+          onSnapshot(officialQ, (officialSnap) => {
+            const offPosts = [];
+            officialSnap.forEach(doc => {
+              const data = doc.data();
+              if (data.isDeleted === true) return;
+              const rawSadhu = typeof data.sadhuCount === 'number' ? data.sadhuCount : 0;
+              const normTimestamp = typeof data.timestamp === 'number' ? data.timestamp : (data.serverCreatedAt?.toMillis ? data.serverCreatedAt.toMillis() : (data.date ? Date.parse(data.date) || Date.now() : Date.now()));
+              offPosts.push({
+                id: doc.id,
+                ...data,
+                timestamp: normTimestamp,
+                isOfficial: true,
+                sadhuCount: Math.max(0, rawSadhu),
+                sadhuUsers: Array.isArray(data.sadhuUsers) ? data.sadhuUsers : [],
+                comments: Array.isArray(data.comments) ? data.comments : []
+              });
             });
+            if (offPosts.length > 0) {
+              this.cacheOfficialPosts(offPosts);
+              this.mergeAdditionalPosts(offPosts);
+            }
+          }, (err) => {
+            console.warn('[Firestore] Official posts real-time error:', err);
           });
-          if (offPosts.length > 0) {
-            this.mergeAdditionalPosts(offPosts);
-          }
-        }).catch(() => {});
+        } catch (offErr) {
+          console.warn('[Firestore] Official posts listener init note:', offErr);
+        }
 
         // Feed Watchdog: Guarantee that feed renders within 1200ms even if WebSocket / SDK is blocked
         setTimeout(() => {
@@ -840,7 +882,7 @@ export const StorageService = {
         p.uid === this.currentUser.uid ||
         (this.currentUser.email && p.authorEmail && p.authorEmail.toLowerCase() === this.currentUser.email.toLowerCase())
       ));
-      if (isUser) return true;
+      if (isOff || isUser) return true;
       return !deletedIds.includes(p.id);
     };
 
@@ -856,12 +898,19 @@ export const StorageService = {
 
     try {
       const rawPosts = localStorage.getItem('pinPotha_posts') || localStorage.getItem('pinPotha_sandbox_posts');
+      const rawOfficial = localStorage.getItem('pinPotha_official_posts');
       let combined = [];
 
+      if (rawOfficial) {
+        try {
+          const offList = JSON.parse(rawOfficial);
+          if (Array.isArray(offList)) combined.push(...offList);
+        } catch (e) {}
+      }
       if (rawPosts) {
         try {
           const list = JSON.parse(rawPosts);
-          if (Array.isArray(list)) combined = list;
+          if (Array.isArray(list)) combined.push(...list);
         } catch (e) {}
       }
 
@@ -977,6 +1026,9 @@ export const StorageService = {
         this.fetchPostsViaREST(this.FEED_PAGE_SIZE),
         this.fetchOfficialPostsViaREST()
       ]);
+      if (Array.isArray(officialPosts) && officialPosts.length > 0) {
+        this.cacheOfficialPosts(officialPosts);
+      }
       const combined = this.mergePostsArray(officialPosts, posts);
       if (Array.isArray(combined) && combined.length > 0) {
         this._loadedPosts = combined;
@@ -1106,9 +1158,9 @@ export const StorageService = {
           from: [{ collectionId: COLLECTIONS.POSTS }],
           where: {
             fieldFilter: {
-              field: { fieldPath: 'author' },
+              field: { fieldPath: 'isOfficial' },
               op: 'EQUAL',
-              value: { stringValue: 'අපේ පිං පොත' }
+              value: { booleanValue: true }
             }
           },
           limit: 10
@@ -1130,6 +1182,9 @@ export const StorageService = {
           posts.push(p);
         }
       });
+      if (posts.length > 0) {
+        this.cacheOfficialPosts(posts);
+      }
       return posts;
     } catch (e) {
       console.warn('[Storage] fetchOfficialPostsViaREST error:', e);

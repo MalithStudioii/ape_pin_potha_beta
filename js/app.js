@@ -4,11 +4,11 @@
  * ============================================================================
  */
 
-import { StorageService } from './storage.js?v=124';
-import { Security } from './security.js?v=124';
+import { StorageService } from './storage.js?v=125';
+import { Security } from './security.js?v=125';
 import { uploadToImgBB } from './imgbb-service.js?v=66';
 import { SoundService, triggerHaptic } from './sound.js?v=66';
-import { FeedAlgorithm } from './algorithm.js?v=66';
+import { FeedAlgorithm } from './algorithm.js?v=125';
 let allCommunityMembersCache = [];
 
 /* ==========================================================================
@@ -9067,7 +9067,7 @@ function initPWAEngine() {
   // Register Service Worker safely
   if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
     const registerSW = () => {
-      navigator.serviceWorker.register('./sw.js?v=124', { updateViaCache: 'none' });
+      navigator.serviceWorker.register('./sw.js?v=125', { updateViaCache: 'none' });
     };
     if (document.readyState === 'complete') {
       registerSW();
@@ -9075,7 +9075,7 @@ function initPWAEngine() {
       window.addEventListener('load', registerSW);
     }
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js?v=124', { updateViaCache: 'none' })
+      navigator.serviceWorker.register('./sw.js?v=125', { updateViaCache: 'none' })
         .then((registration) => {
           // Immediately check for service worker updates
           try { registration.update(); } catch (e) {}
