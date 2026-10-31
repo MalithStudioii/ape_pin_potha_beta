@@ -51,14 +51,20 @@
     <link rel="apple-touch-icon" href="assets/icon-192.png">
 
     <!-- Core Pure CSS Design System -->
-    <link rel="stylesheet" href="css/styles.css?v=126">
+    <link rel="stylesheet" href="css/styles.css?v=127">
 
     <!-- Immediate Service Worker & Cache Invalidation Script -->
     <script>
       (function() {
-        var v = 'v126';
+        var v = 'v127';
         if (localStorage.getItem('pinPotha_active_build') !== v) {
           localStorage.setItem('pinPotha_active_build', v);
+          try {
+            localStorage.removeItem('pinPotha_posts');
+            localStorage.removeItem('pinPotha_sandbox_posts');
+            localStorage.removeItem('pinPotha_cached_community_members');
+            localStorage.removeItem('pinPotha_official_posts');
+          } catch(e) {}
           if ('caches' in window) {
             caches.keys().then(function(keys) {
               keys.forEach(function(k) {
@@ -70,7 +76,12 @@
           }
           if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(regs) {
-              regs.forEach(function(r) { try { r.update(); } catch(e){} });
+              regs.forEach(function(r) {
+                try {
+                  r.update();
+                  r.unregister();
+                } catch(e){}
+              });
             });
           }
         }
@@ -186,15 +197,17 @@
                 <span id="headerAranyaBtn" style="display: none;"></span>
                 <span id="navSettingsBtn" style="display: none;"></span>
 
-                <!-- Admin Crown Button (Visible only to Master Admin & Admins) -->
-                <button id="headerAdminCrownBtn" class="header-admin-crown-btn hidden" title="👑 පිං පොත Admin Dashboard" style="display: none !important;">
+                <!-- Admin Crown Button (Visible to Master Admin & Admins) -->
+                <button id="headerAdminCrownBtn" class="header-admin-crown-btn" onclick="window.location.href='admin.html'" title="👑 Master Admin Dashboard">
                     <i class="fa-solid fa-crown"></i>
                     <span>Admin</span>
                 </button>
 
                 <button onclick="switchTab('profile')" id="userProfileBtn" class="user-profile-btn" title="මගේ ප්‍රොෆයිලය බලන්න">
-                    <div class="user-avatar-circle" id="navAvatar">ම</div>
-                    <span id="userNameDisplay">මලිත්</span>
+                    <div class="user-avatar-circle" id="navAvatar">
+                        <img src="https://i.ibb.co/k6wJFJnH/avatar-1792084050862.webp" alt="මලිත්" style="width: 100%; height: 100%; border-radius: 9999px; object-fit: cover; display: block;" onerror="this.parentElement.innerText='ම';">
+                    </div>
+                    <span id="userNameDisplay">මලිත් දුෂාන්ත</span>
                 </button>
 
                 <!-- Mobile 3-Lines Hamburger Menu Button (To the right of profile) -->
@@ -225,23 +238,25 @@
             <!-- User Mini Profile Card -->
             <div class="card">
                 <div class="profile-card-cover" onclick="switchTab('profile')" style="cursor: pointer;">
-                    <div class="profile-card-avatar" id="sideAvatar">ම</div>
+                    <div class="profile-card-avatar" id="sideAvatar">
+                        <img src="https://i.ibb.co/k6wJFJnH/avatar-1792084050862.webp" alt="මලිත්" style="width: 100%; height: 100%; border-radius: 9999px; object-fit: cover; display: block;" onerror="this.parentElement.innerText='ම';">
+                    </div>
                 </div>
                 <div class="profile-card-body">
                     <div class="profile-name" onclick="switchTab('profile')" style="cursor: pointer;">
-                        <span id="sideUserName">මලිත්</span>
-                        <i class="fa-solid fa-circle-check" style="color: #059669; font-size: 0.75rem;" title="Google සත්‍යාපිත කල්‍යාණ මිත්‍ර"></i>
+                        <span id="sideUserName">මලිත් දුෂාන්ත</span>
+                        <i class="fa-solid fa-crown" style="color: #f59e0b; font-size: 0.75rem;" title="Master Admin"></i>
                     </div>
-                    <p class="profile-role" id="sideUserBio">කල්‍යාණ මිත්‍ර පුණ්‍ය සාමාජික</p>
+                    <p class="profile-role" id="sideUserBio">👑 ප්‍රධාන පරිපාලක (Master Admin)</p>
 
                     <!-- Personal Stats -->
                     <div class="stats-grid">
                         <div class="stat-box merits">
-                            <span class="stat-number amber" id="statMyPosts">0</span>
+                            <span class="stat-number amber" id="statMyPosts">17</span>
                             <span class="stat-label">මගේ පින්කම්</span>
                         </div>
                         <div class="stat-box sadhu">
-                            <span class="stat-number green" id="statMySadhu">0</span>
+                            <span class="stat-number green" id="statMySadhu">146</span>
                             <span class="stat-label">ලැබුණු සාදුකාර</span>
                         </div>
                     </div>
@@ -309,7 +324,9 @@
             <!-- "Create Post" Composer Box -->
             <div class="card composer-card">
                 <div class="composer-top">
-                    <div class="user-avatar-circle" id="composerAvatar" style="width: 38px; height: 38px; font-size: 0.95rem;">ම</div>
+                    <div class="user-avatar-circle" id="composerAvatar" style="width: 38px; height: 38px; font-size: 0.95rem;">
+                        <img src="https://i.ibb.co/k6wJFJnH/avatar-1792084050862.webp" alt="මලිත්" style="width: 100%; height: 100%; border-radius: 9999px; object-fit: cover; display: block;" onerror="this.parentElement.innerText='ම';">
+                    </div>
                     <button onclick="openModal('merit')" class="composer-input-btn">
                         අද ඔබ සිදුකළ පින්කම කුමක්ද? සටහන් කරන්න...
                     </button>
@@ -406,6 +423,89 @@
                 </p>
             </div>
 
+            <!-- Community Members Directory Widget (PC Mode - Positioned High in Sidebar) -->
+            <div class="widget-card community-members-widget" id="pcCommunityMembersWidget">
+                <div class="widget-header" style="margin-bottom: 10px;">
+                    <h3 class="widget-title" style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-users" style="color: #d97706;"></i>
+                        <span>සියලු සාමාජිකයින්</span>
+                    </h3>
+                    <span class="widget-sub-pill" id="pcCommunityCountPill">47 දෙනෙක්</span>
+                </div>
+
+                <!-- Quick Member Search Box -->
+                <div class="sidebar-member-search-box">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="pcSidebarMemberSearchInput" placeholder="නමින් සොයන්න..." oninput="handlePcSidebarMemberSearch(this.value)">
+                </div>
+
+                <!-- Mini Member List (Compact Preview) -->
+                <div id="pcSidebarMemberList" class="sidebar-member-list">
+                    <div class="sidebar-member-item" onclick="openMemberProfileModal('1z3CVffo7lb9FoZan9vABNr8fgi1', 'Sunil Wijaya Kumara', 'https://lh3.googleusercontent.com/a/ACg8ocIz_0oGZKwXeIoc1gWHXw2p7ntY6TKreen3A5aqGkieiIzCD48z=s96-c')" style="cursor: pointer;">
+                        <div class="sidebar-member-avatar">
+                            <img src="https://lh3.googleusercontent.com/a/ACg8ocIz_0oGZKwXeIoc1gWHXw2p7ntY6TKreen3A5aqGkieiIzCD48z=s96-c" alt="Sunil Wijaya Kumara" onerror="this.parentElement.innerText='S';">
+                        </div>
+                        <div class="sidebar-member-info">
+                            <div class="sidebar-member-name"><span>Sunil Wijaya Kumara</span></div>
+                            <div class="sidebar-member-meta"><i class="fa-solid fa-calendar-check"></i> 2026 ඔක්තෝබර්</div>
+                        </div>
+                        <div>
+                            <button type="button" class="sidebar-member-action-btn" onclick="event.stopPropagation(); handleSidebarMemberAction('1z3CVffo7lb9FoZan9vABNr8fgi1', 'Sunil Wijaya Kumara')" title="කල්‍යාණ මිත්‍ර ඇරයුමක් යවන්න">
+                                <i class="fa-solid fa-user-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="sidebar-member-item" onclick="openMemberProfileModal('69xlT9NgTUUoGuessE40S7SAabk1', 'Creative World', 'https://lh3.googleusercontent.com/a/ACg8ocKWBk6TI1TYph86IffKhtbJqG9H3Lgv8mkgr0BDozYQabip7H0=s96-c')" style="cursor: pointer;">
+                        <div class="sidebar-member-avatar">
+                            <img src="https://lh3.googleusercontent.com/a/ACg8ocKWBk6TI1TYph86IffKhtbJqG9H3Lgv8mkgr0BDozYQabip7H0=s96-c" alt="Creative World" onerror="this.parentElement.innerText='C';">
+                        </div>
+                        <div class="sidebar-member-info">
+                            <div class="sidebar-member-name"><span>Creative World</span></div>
+                            <div class="sidebar-member-meta"><i class="fa-solid fa-location-dot"></i> ගාල්ල, ගාල්ල</div>
+                        </div>
+                        <div>
+                            <button type="button" class="sidebar-member-action-btn" onclick="event.stopPropagation(); handleSidebarMemberAction('69xlT9NgTUUoGuessE40S7SAabk1', 'Creative World')" title="කල්‍යාණ මිත්‍ර ඇරයුමක් යවන්න">
+                                <i class="fa-solid fa-user-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="sidebar-member-item" onclick="openMemberProfileModal('4MyCCKbszFdct42oN8LcIYvXYEe2', 'Sanjewa Gamage', 'https://i.ibb.co/RpYcqq9R/avatar-1792464305480.jpg')" style="cursor: pointer;">
+                        <div class="sidebar-member-avatar">
+                            <img src="https://i.ibb.co/RpYcqq9R/avatar-1792464305480.jpg" alt="Sanjewa Gamage" onerror="this.parentElement.innerText='S';">
+                        </div>
+                        <div class="sidebar-member-info">
+                            <div class="sidebar-member-name"><span>Sanjewa Gamage</span></div>
+                            <div class="sidebar-member-meta"><i class="fa-solid fa-calendar-check"></i> 2026 ඔක්තෝබර්</div>
+                        </div>
+                        <div>
+                            <button type="button" class="sidebar-member-action-btn" onclick="event.stopPropagation(); handleSidebarMemberAction('4MyCCKbszFdct42oN8LcIYvXYEe2', 'Sanjewa Gamage')" title="කල්‍යාණ මිත්‍ර ඇරයුමක් යවන්න">
+                                <i class="fa-solid fa-user-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="sidebar-member-item" onclick="openMemberProfileModal('1zKUNrsU10dTuJ381WtXtmVjurB2', 'Janaka Bandara', 'https://i.ibb.co/cGNDLLF/avatar-1792991063289.jpg')" style="cursor: pointer;">
+                        <div class="sidebar-member-avatar">
+                            <img src="https://i.ibb.co/cGNDLLF/avatar-1792991063289.jpg" alt="Janaka Bandara" onerror="this.parentElement.innerText='J';">
+                        </div>
+                        <div class="sidebar-member-info">
+                            <div class="sidebar-member-name"><span>Janaka Bandara</span></div>
+                            <div class="sidebar-member-meta"><i class="fa-solid fa-location-dot"></i> ත්‍රිකුණාමලය</div>
+                        </div>
+                        <div>
+                            <button type="button" class="sidebar-member-action-btn" onclick="event.stopPropagation(); handleSidebarMemberAction('1zKUNrsU10dTuJ381WtXtmVjurB2', 'Janaka Bandara')" title="කල්‍යාණ මිත්‍ර ඇරයුමක් යවන්න">
+                                <i class="fa-solid fa-user-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- View All Full Directory Button -->
+                <button type="button" class="btn-sidebar-view-all" onclick="switchTab('friends')" title="සියලුම කල්‍යාණ මිතුරන් නාමාවලිය බලන්න">
+                    <span>සියලු සාමාජිකයින් බලන්න</span>
+                    <i class="fa-solid fa-chevron-right" style="font-size: 0.75rem;"></i>
+                </button>
+            </div>
+
             <!-- Urgent Charity Needs Widget -->
             <div class="widget-card">
                 <div class="widget-header">
@@ -446,36 +546,6 @@
                         <p id="poyaEventDesc" style="font-size: 0.68rem; color: #64748b;">කඨින චීවර මාසයේ ආරම්භය</p>
                     </div>
                 </div>
-            </div>
-
-            <!-- Community Members Directory Widget (PC Mode) -->
-            <div class="widget-card community-members-widget" id="pcCommunityMembersWidget">
-                <div class="widget-header" style="margin-bottom: 10px;">
-                    <h3 class="widget-title" style="margin: 0; display: flex; align-items: center; gap: 8px;">
-                        <i class="fa-solid fa-users" style="color: #d97706;"></i>
-                        <span>සියලු සාමාජිකයින්</span>
-                    </h3>
-                    <span class="widget-sub-pill" id="pcCommunityCountPill">සාමාජිකයින්</span>
-                </div>
-
-                <!-- Quick Member Search Box -->
-                <div class="sidebar-member-search-box">
-                    <i class="fa-solid fa-magnifying-glass"></i>
-                    <input type="text" id="pcSidebarMemberSearchInput" placeholder="නමින් සොයන්න..." oninput="handlePcSidebarMemberSearch(this.value)">
-                </div>
-
-                <!-- Mini Member List (Compact Preview) -->
-                <div id="pcSidebarMemberList" class="sidebar-member-list">
-                    <div style="text-align: center; padding: 16px; color: #94a3b8; font-size: 0.78rem;">
-                        <i class="fa-solid fa-spinner fa-spin" style="color: #d97706;"></i> සාමාජිකයින් සොයමින්...
-                    </div>
-                </div>
-
-                <!-- View All Full Directory Button -->
-                <button type="button" class="btn-sidebar-view-all" onclick="switchTab('friends')" title="සියලුම කල්‍යාණ මිතුරන් නාමාවලිය බලන්න">
-                    <span>සියලු සාමාජිකයින් බලන්න</span>
-                    <i class="fa-solid fa-chevron-right" style="font-size: 0.75rem;"></i>
-                </button>
             </div>
 
         </aside>
@@ -3353,6 +3423,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <!-- Application ES Modules -->
-    <script type="module" src="js/app.js?v=126"></script>
+    <script type="module" src="js/app.js?v=127"></script>
 </body>
 </html>

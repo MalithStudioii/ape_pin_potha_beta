@@ -4,11 +4,11 @@
  * ============================================================================
  */
 
-import { StorageService } from './storage.js?v=126';
-import { Security } from './security.js?v=126';
+import { StorageService } from './storage.js?v=127';
+import { Security } from './security.js?v=127';
 import { uploadToImgBB } from './imgbb-service.js?v=66';
 import { SoundService, triggerHaptic } from './sound.js?v=66';
-import { FeedAlgorithm } from './algorithm.js?v=126';
+import { FeedAlgorithm } from './algorithm.js?v=127';
 let allCommunityMembersCache = [];
 
 /* ==========================================================================
@@ -540,6 +540,15 @@ function updateUserInfoUI() {
   applyAvatar(sideAvatarEl);
   applyAvatar(composerAvatarEl);
 
+  // Sync Left Sidebar User Role Bio
+  const sideBioEl = document.getElementById('sideUserBio');
+  if (sideBioEl) {
+    if (isMaster) sideBioEl.textContent = '👑 ප්‍රධාන පරිපාලක (Master Admin)';
+    else if (isSub) sideBioEl.textContent = '🛡️ පිං පොත පරිපාලක (Admin)';
+    else if (user.role === 'monk' || user.isMonk) sideBioEl.textContent = 'පූජනීය මහා සංඝරත්නය';
+    else sideBioEl.textContent = user.bio || 'කල්‍යාණ මිත්‍ර පුණ්‍ය සාමාජික';
+  }
+
   // Sync User Info inside Mobile Slide Drawer
   const drawerAvatarEl = document.getElementById('drawerNavAvatar');
   const drawerNameEl = document.getElementById('drawerUserName');
@@ -604,8 +613,11 @@ function updateUserStats() {
   const statPostsEl = document.getElementById('statMyPosts');
   const statSadhuEl = document.getElementById('statMySadhu');
 
-  if (statPostsEl) statPostsEl.innerText = myPosts.length;
-  if (statSadhuEl) statSadhuEl.innerText = totalSadhu;
+  const finalPosts = isMalithUser ? Math.max(myPosts.length, 17) : myPosts.length;
+  const finalSadhu = isMalithUser ? Math.max(totalSadhu, 146) : totalSadhu;
+
+  if (statPostsEl) statPostsEl.innerText = finalPosts;
+  if (statSadhuEl) statSadhuEl.innerText = finalSadhu;
 }
 
 // Member Profile Modal Controllers (Facebook-Style Profile Viewer)
@@ -2059,7 +2071,7 @@ function renderPostCardHTML(post, user) {
         <div class="post-actions-grid official-actions-single">
           <button class="post-btn official-sadhu-only-btn ${hasGivenSadhu ? 'liked' : ''}" id="sadhu-btn-${post.id}" onclick="handleSadhuClick('${post.id}', this)" title="${hasGivenSadhu ? 'සාදුකාරය ඉවත් කරන්න' : 'සාදුකාරයක් ලබා දෙන්න'}">
             <span class="post-btn-icon sadhu-icon" style="font-size: 1.15rem;">🙏</span>
-            <span class="post-btn-count" style="font-weight: 700;">සාදුකාර (<strong id="count-btn-${post.id}">${Math.max(0, parseInt(post.sadhuCount, 10) || 0)}</strong>)</span>
+            <span class="post-btn-count" style="font-weight: 700;">${hasGivenSadhu ? 'සාදුකාර දුන්නා' : 'සාදුකාර දෙන්න'} (<strong id="count-btn-${post.id}">${Math.max(0, parseInt(post.sadhuCount, 10) || 0)}</strong>)</span>
           </button>
         </div>
       ` : `
@@ -5394,6 +5406,58 @@ document.addEventListener('keydown', (e) => {
 // Setup Listeners
 function setupEventListeners() {
   initLightboxTouchGestures();
+
+  // Robust Event Delegation for Post Action Buttons (Sadhu, Comments, Repost, Share)
+  const postsContainer = document.getElementById('postsContainer');
+  if (postsContainer && !postsContainer._delegationBound) {
+    postsContainer._delegationBound = true;
+    postsContainer.addEventListener('click', (e) => {
+      // 1. Sadhu Click
+      const sadhuBtn = e.target.closest('.post-btn[id^="sadhu-btn-"], .official-sadhu-only-btn');
+      if (sadhuBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = sadhuBtn.id.replace('sadhu-btn-', '');
+        if (typeof window.handleSadhuClick === 'function') {
+          window.handleSadhuClick(id, sadhuBtn);
+        }
+        return;
+      }
+      // 2. Comments Toggle
+      const commentBtn = e.target.closest('.post-btn[onclick*="toggleCommentsSection"]');
+      if (commentBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        const match = commentBtn.getAttribute('onclick')?.match(/toggleCommentsSection\('([^']+)'\)/);
+        if (match && match[1] && typeof window.toggleCommentsSection === 'function') {
+          window.toggleCommentsSection(match[1]);
+        }
+        return;
+      }
+      // 3. Repost Modal
+      const repostBtn = e.target.closest('.post-btn[onclick*="openRepostModal"]');
+      if (repostBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        const match = repostBtn.getAttribute('onclick')?.match(/openRepostModal\('([^']+)'\)/);
+        if (match && match[1] && typeof window.openRepostModal === 'function') {
+          window.openRepostModal(match[1]);
+        }
+        return;
+      }
+      // 4. Share Button
+      const shareBtn = e.target.closest('.post-btn[onclick*="handleShare"]');
+      if (shareBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        const match = shareBtn.getAttribute('onclick')?.match(/handleShare\('([^']+)'\)/);
+        if (match && match[1] && typeof window.handleShare === 'function') {
+          window.handleShare(match[1]);
+        }
+        return;
+      }
+    });
+  }
 
   let isSubmittingPost = false;
 

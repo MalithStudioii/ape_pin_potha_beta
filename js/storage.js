@@ -207,7 +207,84 @@ export const StorageService = {
         }
       }
     } catch (e) {}
-    return [];
+
+    // Permanent, instant zero-latency default official announcements (always available offline/cold-start)
+    const defaults = [
+      {
+        id: "MtzAbfpxlg3odWmXHuEO",
+        uid: "o2pWiAX7SXTHiMfSiphI8Ln5HAM2",
+        author: "අපේ පිං පොත",
+        authorRole: "official",
+        authorPhoto: null,
+        title: "පිං පොත නිල නිවේදනය",
+        category: "සාමාන්‍ය",
+        location: "",
+        contact: "",
+        description: "🌸 සාදරයෙන් පිළිගනිමු! 🌸\nලංකාවේ පළමු ඩිජිටල් පුණ්‍ය ජාලයට ඔබත් සාදරයෙන් එක්වන්න!\nඔබ සිදුකළ යහපත් ක්‍රියා, පින්කම් සහ දානමාන සටහන් කරගන්න...\nරට වටා සිටින කල්‍යාණ මිතුරන්ගේ කුසල් දැක සතුටු සිතින් අනුමෝදන් වන්න...",
+        image: "assets/official-welcome-banner.webp",
+        images: ["assets/official-welcome-banner.webp"],
+        isOfficial: true,
+        isPinned: true,
+        sadhuCount: 22,
+        sadhuUsers: ["o2pWiAX7SXTHiMfSiphI8Ln5HAM2"],
+        comments: [],
+        shareCount: 0,
+        repostCount: 0,
+        timestamp: 1792338413395,
+        date: "දවස් 12 කට පෙර",
+        visibility: "public"
+      },
+      {
+        id: "tEWldtJVFPSL5LsxtFlE",
+        uid: "o2pWiAX7SXTHiMfSiphI8Ln5HAM2",
+        author: "අපේ පිං පොත",
+        authorRole: "official",
+        authorPhoto: null,
+        title: "පිං පොත නිල නිවේදනය",
+        category: "සාමාන්‍ය",
+        location: "",
+        contact: "",
+        description: "පිංවත් සියළු දෙනාටම නිදුක් නීරෝගි සුභ දිනයක් වේවා...!!",
+        image: null,
+        images: [],
+        isOfficial: true,
+        isPinned: false,
+        sadhuCount: 20,
+        sadhuUsers: ["o2pWiAX7SXTHiMfSiphI8Ln5HAM2"],
+        comments: [],
+        shareCount: 0,
+        repostCount: 0,
+        timestamp: 1792338413000,
+        date: "දැන්",
+        visibility: "public"
+      },
+      {
+        id: "ovCufhPElI49tLz0MVDV",
+        uid: "o2pWiAX7SXTHiMfSiphI8Ln5HAM2",
+        author: "අපේ පිං පොත",
+        authorRole: "official",
+        authorPhoto: null,
+        title: "පිං පොත නිල නිවේදනය",
+        category: "සාමාන්‍ය",
+        location: "",
+        contact: "",
+        description: "සදහම් ආලෝකයෙන් තුන් ලෙවම පහන් වූ උත්ම් වප් පුර පසළොස්වක පොහෝ දිනයක් වේවා...!",
+        image: null,
+        images: [],
+        isOfficial: true,
+        isPinned: false,
+        sadhuCount: 13,
+        sadhuUsers: ["o2pWiAX7SXTHiMfSiphI8Ln5HAM2"],
+        comments: [],
+        shareCount: 0,
+        repostCount: 0,
+        timestamp: 1792338412000,
+        date: "දැන්",
+        visibility: "public"
+      }
+    ];
+    this._cachedOfficialPosts = defaults;
+    return defaults;
   },
 
   cacheOfficialPosts(officialPosts) {
@@ -378,6 +455,30 @@ export const StorageService = {
         mithrayanCount: Array.isArray(this.currentUser.mithrayan) ? this.currentUser.mithrayan.length : 0
       });
     }
+
+    // Ensure we always have the top community members even on initial offline/cold-start paint
+    const defaultTopMembers = [
+      { uid: "1z3CVffo7lb9FoZan9vABNr8fgi1", name: "Sunil Wijaya Kumara", photo: "https://lh3.googleusercontent.com/a/ACg8ocIz_0oGZKwXeIoc1gWHXw2p7ntY6TKreen3A5aqGkieiIzCD48z=s96-c", location: "2026 ඔක්තෝබර්", joinedDate: "2026 ඔක්තෝබර්", isAdmin: false, role: "member" },
+      { uid: "69xlT9NgTUUoGuessE40S7SAabk1", name: "Creative World", photo: "https://lh3.googleusercontent.com/a/ACg8ocKWBk6TI1TYph86IffKhtbJqG9H3Lgv8mkgr0BDozYQabip7H0=s96-c", location: "ගාල්ල, ගාල්ල", joinedDate: "2026 ඔක්තෝබර්", isAdmin: false, role: "member" },
+      { uid: "4MyCCKbszFdct42oN8LcIYvXYEe2", name: "Sanjewa Gamage", photo: "https://i.ibb.co/RpYcqq9R/avatar-1792464305480.jpg", location: "2026 ඔක්තෝබර්", joinedDate: "2026 ඔක්තෝබර්", isAdmin: false, role: "member" },
+      { uid: "1zKUNrsU10dTuJ381WtXtmVjurB2", name: "Janaka Bandara", photo: "https://i.ibb.co/cGNDLLF/avatar-1792991063289.jpg", location: "ත්‍රිකුණාමලය", joinedDate: "2026 ඔක්තෝබර්", isAdmin: false, role: "member" },
+      { uid: "7lYMOj2LGSX8CCEgt13yhvuKaqr2", name: "Bandara Aloka", photo: "https://i.ibb.co/hF8XNJ8V/avatar-1792323148921.jpg", location: "2026 ඔක්තෝබර්", joinedDate: "2026 ඔක්තෝබර්", isAdmin: false, role: "member" },
+      { uid: "0iGHfQKieAOL9roDCgtOk5NIXqm2", name: "Chathuranga Janaka", photo: "https://lh3.googleusercontent.com/a/ACg8ocLiholD0MzL-vkKJvWWBcfhj4CQpNg_tIsl9qP6SUEZXCqyZxk=s96-c", location: "2026 ඔක්තෝබර්", joinedDate: "2026 ඔක්තෝබර්", isAdmin: false, role: "member" }
+    ];
+    defaultTopMembers.forEach(dm => {
+      if (!map.has(dm.uid)) {
+        map.set(dm.uid, {
+          ...dm,
+          bio: '',
+          updatedAt: now,
+          lastActiveAt: now,
+          isOnline: false,
+          isSangha: false,
+          mithrayanCount: 0
+        });
+      }
+    });
+
     return Array.from(map.values());
   },
 
@@ -622,6 +723,26 @@ export const StorageService = {
         }
       }
     } catch(e) {}
+
+    // Immediate zero-latency background fast REST sync for official announcements & community directory
+    this.fetchOfficialPostsViaREST().then(offPosts => {
+      if (Array.isArray(offPosts) && offPosts.length > 0) {
+        this.cacheOfficialPosts(offPosts);
+        this.mergeAdditionalPosts(offPosts);
+      }
+    }).catch(() => {});
+
+    this.fetchUsersViaREST().then(users => {
+      if (Array.isArray(users) && users.length > 0) {
+        this._cachedCommunityMembers = users;
+        try {
+          localStorage.setItem('pinPotha_cached_community_members', JSON.stringify(users));
+        } catch(e) {}
+        if (typeof window.renderPcSidebarMembers === 'function') {
+          window.renderPcSidebarMembers('', false);
+        }
+      }
+    }).catch(() => {});
 
     if (isFirebaseConfigured()) {
       try {
@@ -1004,6 +1125,10 @@ export const StorageService = {
       const rawOfficial = localStorage.getItem('pinPotha_official_posts');
       let combined = [];
 
+      // Guarantee official announcements are always present in initial feed
+      const offPosts = this.getOfficialPosts();
+      if (Array.isArray(offPosts)) combined.push(...offPosts);
+
       if (rawOfficial) {
         try {
           const offList = JSON.parse(rawOfficial);
@@ -1364,28 +1489,6 @@ export const StorageService = {
       }
     });
     return Array.from(map.values());
-  },
-
-  mergeAdditionalPosts(newPosts = []) {
-    if (!Array.isArray(newPosts) || newPosts.length === 0) return;
-    const existing = this._loadedPosts || [];
-    const map = new Map();
-    newPosts.forEach(p => {
-      if (p && p.id && !this.isDummyTestPost(p)) {
-        p.isOfficial = this.isOfficialPost(p);
-        map.set(p.id, p);
-      }
-    });
-    existing.forEach(p => {
-      if (p && p.id && !map.has(p.id)) {
-        map.set(p.id, p);
-      }
-    });
-    this._loadedPosts = Array.from(map.values());
-    this._cachedPosts = this._loadedPosts;
-    this.syncPostsWithUserSadhus(this._loadedPosts);
-    this.cacheLocal(this._loadedPosts);
-    this.notifyListeners(this._loadedPosts);
   },
 
   async fetchMorePosts() {

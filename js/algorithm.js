@@ -111,18 +111,18 @@ export const FeedAlgorithm = {
     const cloned = [...posts];
 
     return cloned.sort((a, b) => {
-      // 1. Pinned posts ALWAYS come first regardless of mode
-      const aPin = a.isPinned ? 1 : 0;
-      const bPin = b.isPinned ? 1 : 0;
-      if (bPin !== aPin) {
-        return bPin - aPin;
-      }
-
-      // 2. Official platform posts ALWAYS come right after pinned posts across all modes
+      // 1. Official platform announcements ALWAYS come first across all modes
       const aOff = a.isOfficial ? 1 : 0;
       const bOff = b.isOfficial ? 1 : 0;
       if (bOff !== aOff) {
         return bOff - aOff;
+      }
+
+      // 2. Pinned posts come next (or pinned official announcements come before other official announcements)
+      const aPin = a.isPinned ? 1 : 0;
+      const bPin = b.isPinned ? 1 : 0;
+      if (bPin !== aPin) {
+        return bPin - aPin;
       }
 
       // 3. Mode-specific sorting
