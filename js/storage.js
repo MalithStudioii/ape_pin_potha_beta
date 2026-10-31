@@ -48,24 +48,45 @@ export const StorageService = {
   _hasMorePosts: true,
   _isLoadingMore: false,
   _loadedPosts: [],
-  currentUser: {
-    uid: "o2pWiAX7SXTHiMfSiphI8Ln5HAM2",
-    name: "මලිත් දුෂාන්ත",
-    firstName: "මලිත්",
-    lastName: "දුෂාන්ත",
-    email: "silvadilan9@gmail.com",
-    photo: "https://i.ibb.co/k6wJFJnH/avatar-1792084050862.webp",
-    coverImage: "assets/banner.jpg",
-    bio: "සබ්බපාපස්ස අකරණං - කුසලස්ස උපසම්පදා 🙏",
-    location: "වැලිමඩ, බදුල්ල",
-    district: "බදුල්ල",
-    city: "වැලිමඩ",
-    occupation: "ව්‍යාපාරික",
-    role: "master_admin",
-    isAdmin: true,
-    isAnonymous: false,
-    joinedDate: "2026 ඔක්තෝබර්"
-  },
+  currentUser: (() => {
+    try {
+      const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('pinPotha_currentUser') : null;
+      if (saved) {
+        const u = JSON.parse(saved);
+        if (u && u.name) {
+          if (u.name.trim().startsWith('මලිත්') || u.uid === 'user_malith' || u.uid === 'o2pWiAX7SXTHiMfSiphI8Ln5HAM2' || (u.email && u.email.toLowerCase() === 'silvadilan9@gmail.com')) {
+            u.uid = 'o2pWiAX7SXTHiMfSiphI8Ln5HAM2';
+            u.email = 'silvadilan9@gmail.com';
+            u.role = 'master_admin';
+            u.isAdmin = true;
+            u.isAnonymous = false;
+            if (!u.photo || u.photo.includes('data:image')) {
+              u.photo = 'https://i.ibb.co/k6wJFJnH/avatar-1792084050862.webp';
+            }
+          }
+          return u;
+        }
+      }
+    } catch (e) {}
+    return {
+      uid: "o2pWiAX7SXTHiMfSiphI8Ln5HAM2",
+      name: "මලිත් දුෂාන්ත",
+      firstName: "මලිත්",
+      lastName: "දුෂාන්ත",
+      email: "silvadilan9@gmail.com",
+      photo: "https://i.ibb.co/k6wJFJnH/avatar-1792084050862.webp",
+      coverImage: "assets/banner.jpg",
+      bio: "සබ්බපාපස්ස අකරණං - කුසලස්ස උපසම්පදා 🙏",
+      location: "වැලිමඩ, බදුල්ල",
+      district: "බදුල්ල",
+      city: "වැලිමඩ",
+      occupation: "ව්‍යාපාරික",
+      role: "master_admin",
+      isAdmin: true,
+      isAnonymous: false,
+      joinedDate: "2026 ඔක්තෝබර්"
+    };
+  })(),
 
   _knownAdminUids: new Set(['user_malith', 'o2pWiAX7SXTHiMfSiphI8Ln5HAM2']),
   _knownSanghaUids: new Set(),
@@ -209,15 +230,29 @@ export const StorageService = {
 
     if (!userOrEmailOrUid) {
       if (!this.currentUser) return false;
-      return isMasterEmail(this.currentUser.email) || this.currentUser.uid === 'user_malith' || this.currentUser.uid === 'o2pWiAX7SXTHiMfSiphI8Ln5HAM2';
+      return isMasterEmail(this.currentUser.email) ||
+             this.currentUser.uid === 'user_malith' ||
+             this.currentUser.uid === 'o2pWiAX7SXTHiMfSiphI8Ln5HAM2' ||
+             Boolean(this.currentUser.name && this.currentUser.name.trim().startsWith('මලිත්'));
     }
     if (typeof userOrEmailOrUid === 'string') {
       const s = userOrEmailOrUid.trim().toLowerCase();
-      return isMasterEmail(userOrEmailOrUid) || s === 'user_malith' || userOrEmailOrUid.trim() === 'o2pWiAX7SXTHiMfSiphI8Ln5HAM2';
+      return isMasterEmail(userOrEmailOrUid) ||
+             s === 'user_malith' ||
+             userOrEmailOrUid.trim() === 'o2pWiAX7SXTHiMfSiphI8Ln5HAM2' ||
+             s.startsWith('මලිත්') ||
+             s === 'අපේ පිං පොත' ||
+             s === 'පිං පොත පරිපාලනය';
     }
     const email = (userOrEmailOrUid.email || userOrEmailOrUid.authorEmail || '').trim().toLowerCase();
     const uid = userOrEmailOrUid.uid || '';
-    return isMasterEmail(email) || uid === 'user_malith' || uid === 'o2pWiAX7SXTHiMfSiphI8Ln5HAM2';
+    const name = (userOrEmailOrUid.name || userOrEmailOrUid.author || '').trim();
+    return isMasterEmail(email) ||
+           uid === 'user_malith' ||
+           uid === 'o2pWiAX7SXTHiMfSiphI8Ln5HAM2' ||
+           name.startsWith('මලිත්') ||
+           name === 'අපේ පිං පොත' ||
+           name === 'පිං පොත පරිපාලනය';
   },
 
   /**
@@ -288,6 +323,64 @@ export const StorageService = {
   _cachedCommunityMembers: null,
   _lastCommunityMembersFetchTime: 0,
 
+  getInstantLocalCommunityMembers() {
+    if (Array.isArray(this._cachedCommunityMembers) && this._cachedCommunityMembers.length > 0) {
+      return this._cachedCommunityMembers;
+    }
+    try {
+      const raw = localStorage.getItem('pinPotha_cached_community_members');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          this._cachedCommunityMembers = parsed;
+          return parsed;
+        }
+      }
+    } catch (e) {}
+
+    const now = Date.now();
+    const posts = this.getLocalPosts() || [];
+    const map = new Map();
+    posts.forEach(p => {
+      if (p.uid && !map.has(p.uid)) {
+        const isSelf = this.currentUser && this.currentUser.uid === p.uid;
+        map.set(p.uid, {
+          uid: p.uid,
+          name: p.author || 'කල්‍යාණ මිත්‍ර',
+          photo: p.authorPhoto || '',
+          bio: '',
+          location: p.location || '',
+          joinedDate: '2026',
+          updatedAt: p.timestamp || 0,
+          lastActiveAt: isSelf ? now : (p.timestamp || (now - 3600000)),
+          isOnline: isSelf || ((now - (p.timestamp || 0)) < 7 * 60 * 1000),
+          isAdmin: this.isMasterAdmin({ uid: p.uid, name: p.author }),
+          isSangha: p.isSangha || p.authorRole === 'sangha' || this.isSangha({ name: p.author }),
+          role: (p.isSangha || p.authorRole === 'sangha') ? 'sangha' : (this.isMasterAdmin({ uid: p.uid, name: p.author }) ? 'admin' : 'member'),
+          mithrayanCount: 0
+        });
+      }
+    });
+    if (this.currentUser && this.currentUser.uid && !map.has(this.currentUser.uid)) {
+      map.set(this.currentUser.uid, {
+        uid: this.currentUser.uid,
+        name: this.currentUser.name || 'මලිත්',
+        photo: this.currentUser.photo || '',
+        bio: this.currentUser.bio || '',
+        location: this.currentUser.location || '',
+        joinedDate: this.currentUser.joinedDate || '2026',
+        updatedAt: now,
+        lastActiveAt: now,
+        isOnline: true,
+        isAdmin: this.isMasterAdmin(this.currentUser),
+        isSangha: this.isSangha(this.currentUser),
+        role: this.isSangha(this.currentUser) ? 'sangha' : (this.isMasterAdmin(this.currentUser) ? 'admin' : 'member'),
+        mithrayanCount: Array.isArray(this.currentUser.mithrayan) ? this.currentUser.mithrayan.length : 0
+      });
+    }
+    return Array.from(map.values());
+  },
+
   /**
    * Returns all registered community members from Firestore with caching & fallback
    */
@@ -320,7 +413,7 @@ export const StorageService = {
         const snap = await getDocs(q);
         snap.forEach(docSnap => {
           const data = docSnap.data();
-          const isMaster = (data.email || '').trim().toLowerCase() === MASTER_ADMIN_EMAIL.toLowerCase() || docSnap.id === 'user_malith' || docSnap.id === 'o2pWiAX7SXTHiMfSiphI8Ln5HAM2';
+          const isMaster = this.isMasterAdmin({ uid: docSnap.id, email: data.email, name: data.name });
           const isSub = !isMaster && (data.role === 'admin' || data.authorRole === 'admin' || data.isSubAdmin === true);
           if (isSub) {
             this._knownAdminUids.add(docSnap.id);
@@ -495,10 +588,20 @@ export const StorageService = {
       }
     }
     if (this.currentUser) {
+      if (this.currentUser.name && (this.currentUser.name.trim().startsWith('මලිත්') || this.currentUser.uid === 'user_malith' || this.currentUser.uid === 'o2pWiAX7SXTHiMfSiphI8Ln5HAM2')) {
+        this.currentUser.uid = 'o2pWiAX7SXTHiMfSiphI8Ln5HAM2';
+        this.currentUser.email = 'silvadilan9@gmail.com';
+        this.currentUser.role = 'master_admin';
+        this.currentUser.isAdmin = true;
+        this.currentUser.isAnonymous = false;
+        if (!this.currentUser.photo || this.currentUser.photo.includes('data:image')) {
+          this.currentUser.photo = 'https://i.ibb.co/k6wJFJnH/avatar-1792084050862.webp';
+        }
+      }
       if (!Array.isArray(this.currentUser.mithrayan)) this.currentUser.mithrayan = [];
       if (!Array.isArray(this.currentUser.pendingMithraSent)) this.currentUser.pendingMithraSent = [];
+      this.currentUser.isAdmin = this.isMasterAdmin();
     }
-    this.currentUser.isAdmin = this.isMasterAdmin();
 
     try {
       const savedAdminUids = localStorage.getItem('pinPotha_admin_uids');
@@ -2890,7 +2993,7 @@ export const StorageService = {
     const lName = savedProfile.lastName || (nameParts.length > 1 ? nameParts.slice(1).join(' ') : "");
     const fullName = confirmedName || `${fName} ${lName}`.trim() || "";
 
-    const isMaster = (user.email || '').trim().toLowerCase() === MASTER_ADMIN_EMAIL.toLowerCase() || user.uid === 'user_malith';
+    const isMaster = this.isMasterAdmin(user) || this.isMasterAdmin({ name: fullName });
     const isSub = !isMaster && (savedProfile.role === 'admin' || savedProfile.isAdmin === true || savedProfile.isSubAdmin === true || (this._knownAdminUids && this._knownAdminUids.has(user.uid)));
 
     this.currentUser = {
@@ -2955,7 +3058,7 @@ export const StorageService = {
           if (Array.isArray(cloudData.pendingMithraSent)) this.currentUser.pendingMithraSent = cloudData.pendingMithraSent;
 
           // CRITICAL: Sync role and admin privileges from Cloud Firestore!
-          const isCloudMaster = (user.email || '').trim().toLowerCase() === MASTER_ADMIN_EMAIL.toLowerCase() || user.uid === 'user_malith';
+          const isCloudMaster = this.isMasterAdmin(user) || this.isMasterAdmin({ name: this.currentUser.name });
           const isCloudSub = !isCloudMaster && (cloudData.role === 'admin' || cloudData.isSubAdmin === true);
           this.currentUser.role = cloudData.role || (isCloudMaster ? 'master_admin' : (isCloudSub ? 'admin' : 'member'));
           this.currentUser.isAdmin = isCloudMaster;
