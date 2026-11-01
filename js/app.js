@@ -4,11 +4,11 @@
  * ============================================================================
  */
 
-import { StorageService } from './storage.js?v=129';
-import { Security } from './security.js?v=129';
+import { StorageService } from './storage.js?v=130';
+import { Security } from './security.js?v=130';
 import { uploadToImgBB } from './imgbb-service.js?v=66';
 import { SoundService, triggerHaptic } from './sound.js?v=66';
-import { FeedAlgorithm } from './algorithm.js?v=129';
+import { FeedAlgorithm } from './algorithm.js?v=130';
 let allCommunityMembersCache = [];
 
 /* ==========================================================================
@@ -1864,12 +1864,12 @@ function updatePostCommentCountUI(postId) {
 }
 
 // Reusable Post Card HTML Generator
-function renderPostCardHTML(post, user) {
+export function renderPostCardHTML(post, user) {
   if (!post) return '';
   const isOfficial = Boolean(StorageService.isOfficialPost ? StorageService.isOfficialPost(post) : (post.isOfficial || post.author === 'අපේ පිං පොත'));
   post.isOfficial = isOfficial;
   const isMaster = StorageService.isMasterAdmin();
-  const isOwner = post.uid === user.uid;
+  const isOwner = Boolean(user && user.uid && post.uid === user.uid);
   const canDelete = isOwner || isMaster;
   const canEditPost = isOwner || isMaster;
   const comments = post.comments || [];
@@ -2394,7 +2394,16 @@ function renderFeed() {
     `;
   }
 
-  container.innerHTML = ranked.map(post => renderPostCardHTML(post, user)).join('') + sentinelHtml;
+  const cardsHtmlArr = [];
+  for (const post of ranked) {
+    try {
+      const cardHtml = renderPostCardHTML(post, user);
+      if (cardHtml) cardsHtmlArr.push(cardHtml);
+    } catch (cardErr) {
+      console.warn('[Feed] Error rendering card for post', post?.id, cardErr);
+    }
+  }
+  container.innerHTML = cardsHtmlArr.join('') + sentinelHtml;
   setupInfiniteScrollObserver();
 }
 
@@ -2433,6 +2442,9 @@ export async function triggerLoadMorePosts() {
   if (isTriggeringLoadMore) return;
   if (!StorageService.hasMorePosts || !StorageService.hasMorePosts()) return;
   if (StorageService.isLoadingMorePosts && StorageService.isLoadingMorePosts()) return;
+  if (currentPostsData.length < 5 && StorageService.isInitialSyncDone && !StorageService.isInitialSyncDone()) {
+    return;
+  }
 
   isTriggeringLoadMore = true;
   updateSentinelUI();
@@ -2461,6 +2473,8 @@ export function updateSentinelUI() {
   const hasMore = StorageService.hasMorePosts ? StorageService.hasMorePosts() : false;
   const isLoading = (StorageService.isLoadingMorePosts && StorageService.isLoadingMorePosts()) || isTriggeringLoadMore;
 
+  const renderedCount = document.querySelectorAll('#postsContainer article.post-card').length;
+
   if (isLoading) {
     sentinel.innerHTML = `
       <div class="infinite-scroll-loading">
@@ -2474,13 +2488,15 @@ export function updateSentinelUI() {
         <i class="fa-solid fa-arrow-down"></i> තවත් පින්කම් බලන්න (Load More)
       </button>
     `;
-  } else {
+  } else if (renderedCount > 5) {
     sentinel.innerHTML = `
       <div class="infinite-scroll-end">
         <span class="end-icon">🪷</span>
         <span>ඔබ සියලුම පින්කම් කියවා අවසන්ය. සියලු දෙනාටම තෙරුවන් සරණයි! 🙏</span>
       </div>
     `;
+  } else {
+    sentinel.innerHTML = '';
   }
 }
 window.updateSentinelUI = updateSentinelUI;
@@ -9139,7 +9155,7 @@ function initPWAEngine() {
   const isIos = (typeof window !== 'undefined' && window.navigator && /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase())) && !window.MSStream;
 
   // Purge any stale caches from previous builds
-  const ACTIVE_BUILD = 'v126';
+  const ACTIVE_BUILD = 'v130';
   if (localStorage.getItem('pinPotha_active_build') !== ACTIVE_BUILD) {
     localStorage.setItem('pinPotha_active_build', ACTIVE_BUILD);
     if ('caches' in window) {
@@ -9156,7 +9172,7 @@ function initPWAEngine() {
   // Register Service Worker safely
   if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
     const registerSW = () => {
-      navigator.serviceWorker.register('./sw.js?v=126', { updateViaCache: 'none' });
+      navigator.serviceWorker.register('./sw.js?v=130', { updateViaCache: 'none' });
     };
     if (document.readyState === 'complete') {
       registerSW();
@@ -9164,7 +9180,7 @@ function initPWAEngine() {
       window.addEventListener('load', registerSW);
     }
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js?v=126', { updateViaCache: 'none' })
+      navigator.serviceWorker.register('./sw.js?v=130', { updateViaCache: 'none' })
         .then((registration) => {
           // Immediately check for service worker updates
           try { registration.update(); } catch (e) {}

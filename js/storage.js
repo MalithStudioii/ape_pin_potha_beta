@@ -5,8 +5,9 @@
  */
 
 import { firebaseConfig, isFirebaseConfigured, COLLECTIONS } from './firebase-config.js?v=22';
-import { Security } from './security.js?v=48';
+import { Security } from './security.js?v=130';
 import { INITIAL_ARANYA_LIST, SRI_LANKA_DISTRICTS } from './aranya-data.js';
+import { SEED_POSTS } from './initial-seed.js?v=130';
 
 let db = null;
 let auth = null;
@@ -37,8 +38,7 @@ const DEFAULT_BANNED_WORDS = [
 ];
 
 
-// Sample seed data cleaned - empty for pure production feeds
-const SEED_POSTS = [];
+// Live community seed feed cache imported from ./initial-seed.js
 const SEED_NOTIFICATIONS = [];
 
 export const StorageService = {
@@ -47,6 +47,7 @@ export const StorageService = {
   _lastVisibleDoc: null,
   _hasMorePosts: true,
   _isLoadingMore: false,
+  _isInitialSyncDone: false,
   _loadedPosts: [],
   currentUser: (() => {
     try {
@@ -115,14 +116,6 @@ export const StorageService = {
         title.includes('සිත නිවන කෙටි ධර්ම කරුණක්') ||
         title.includes('දුෂ්කර පාසලක පුස්තකාලයට පොත් අවශ්‍යයි') ||
         title.includes('රාත්‍රී මෛත්‍රී භාවනාව')) {
-      return true;
-    }
-    // 4. Unsplash test image URLs from dummy seed posts
-    const imgStr = JSON.stringify(p.images || p.image || '');
-    if (imgStr.includes('photo-1544650039-22886fbb4323') || 
-        imgStr.includes('photo-1514933651103-005eec06c04b') ||
-        imgStr.includes('photo-1509198397868-475647b2a1e5') ||
-        imgStr.includes('photo-1518709268805-4e9042af9f23')) {
       return true;
     }
     return false;
@@ -1153,8 +1146,13 @@ export const StorageService = {
       if (rawPosts) {
         try {
           const list = JSON.parse(rawPosts);
-          if (Array.isArray(list)) combined.push(...list);
-        } catch (e) {}
+          if (Array.isArray(list) && list.length > 0) combined.push(...list);
+          else if (typeof SEED_POSTS !== 'undefined' && Array.isArray(SEED_POSTS)) combined.push(...SEED_POSTS);
+        } catch (e) {
+          if (typeof SEED_POSTS !== 'undefined' && Array.isArray(SEED_POSTS)) combined.push(...SEED_POSTS);
+        }
+      } else if (typeof SEED_POSTS !== 'undefined' && Array.isArray(SEED_POSTS) && SEED_POSTS.length > 0) {
+        combined.push(...SEED_POSTS);
       }
 
       const map = new Map();
@@ -1257,6 +1255,10 @@ export const StorageService = {
     return this._hasMorePosts;
   },
 
+  isInitialSyncDone() {
+    return this._isInitialSyncDone;
+  },
+
   isLoadingMorePosts() {
     return this._isLoadingMore;
   },
@@ -1281,6 +1283,7 @@ export const StorageService = {
         this._loadedPosts = combined;
         this._cachedPosts = combined;
         this._hasMorePosts = posts.length >= this.FEED_PAGE_SIZE;
+        this._isInitialSyncDone = true;
         this.syncPostsWithUserSadhus(this._loadedPosts);
         this.cacheLocal(this._loadedPosts);
         this.notifyListeners(this._loadedPosts);
@@ -1290,6 +1293,7 @@ export const StorageService = {
       console.warn('[Storage] Fast REST fetch note:', e);
     }
     const localPosts = this.getLocalPosts();
+    this._isInitialSyncDone = true;
     this.syncPostsWithUserSadhus(localPosts);
     this.notifyListeners(localPosts);
   },
@@ -1568,8 +1572,10 @@ export const StorageService = {
         });
       } else {
         // Fallback: Paginate via REST API with timestamp cursor
-        const lastPost = this._loadedPosts[this._loadedPosts.length - 1];
-        const lastTs = lastPost ? (lastPost.timestamp || 0) : Date.now();
+        // Exclude official announcements from determining the regular post pagination cursor
+        const regularPosts = (this._loadedPosts || []).filter(p => !this.isOfficialPost(p));
+        const lastPost = regularPosts.length > 0 ? regularPosts[regularPosts.length - 1] : null;
+        const lastTs = lastPost ? (lastPost.timestamp || null) : null;
         const restPosts = await this.fetchPostsViaREST(this.FEED_PAGE_SIZE, lastTs);
         if (restPosts.length === 0) {
           this._hasMorePosts = false;
