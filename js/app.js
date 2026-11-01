@@ -4,11 +4,11 @@
  * ============================================================================
  */
 
-import { StorageService } from './storage.js?v=127';
-import { Security } from './security.js?v=127';
+import { StorageService } from './storage.js?v=129';
+import { Security } from './security.js?v=129';
 import { uploadToImgBB } from './imgbb-service.js?v=66';
 import { SoundService, triggerHaptic } from './sound.js?v=66';
-import { FeedAlgorithm } from './algorithm.js?v=127';
+import { FeedAlgorithm } from './algorithm.js?v=129';
 let allCommunityMembersCache = [];
 
 /* ==========================================================================
@@ -304,7 +304,7 @@ function bootApp() {
         } else {
           updateFeedInPlace(currentPostsData);
         }
-      } else if (hasRenderedCards && prevIds.length > 0 && newIds !== prevIds && newIds.startsWith(prevIds)) {
+      } else if (hasRenderedCards && prevIds.length > 0 && isTriggeringLoadMore && newIds.startsWith(prevIds)) {
         // Posts were appended at the bottom via pagination! Smooth append without resetting DOM or scroll position
         appendNewPostsToFeed(posts, prevIds);
         updateFeedInPlace(currentPostsData);
@@ -1865,6 +1865,9 @@ function updatePostCommentCountUI(postId) {
 
 // Reusable Post Card HTML Generator
 function renderPostCardHTML(post, user) {
+  if (!post) return '';
+  const isOfficial = Boolean(StorageService.isOfficialPost ? StorageService.isOfficialPost(post) : (post.isOfficial || post.author === 'අපේ පිං පොත'));
+  post.isOfficial = isOfficial;
   const isMaster = StorageService.isMasterAdmin();
   const isOwner = post.uid === user.uid;
   const canDelete = isOwner || isMaster;
@@ -2266,19 +2269,26 @@ function renderFeed() {
       const matchTitle = (post.title || '').toLowerCase().includes(searchQ);
       const matchDesc = (post.description || '').toLowerCase().includes(searchQ);
       const matchLoc = (post.location || '').toLowerCase().includes(searchQ);
-      if (!matchTitle && !matchDesc && !matchLoc) return false;
+      const matchAuthor = (post.author || (StorageService.resolveAuthorName ? StorageService.resolveAuthorName(post) : '')).toLowerCase().includes(searchQ);
+      if (!matchTitle && !matchDesc && !matchLoc && !matchAuthor) return false;
     }
 
-    const isOfficial = StorageService.isOfficialPost ? StorageService.isOfficialPost(post) : (post.isOfficial || post.author === 'අපේ පිං පොත');
+    const isOfficial = StorageService.isOfficialPost ? StorageService.isOfficialPost(post) : Boolean(post.isOfficial || post.author === 'අපේ පිං පොත');
+    post.isOfficial = isOfficial;
+
+    const isCategoryMatch = (activeCategory === 'සියල්ල') ||
+      (post.category === activeCategory) ||
+      (activeCategory === 'සුබපැතුම්' && (post.category === 'සිතුවිලි' || post.category === 'සාමාන්‍ය')) ||
+      (activeCategory === 'සමාජ සත්කාර' && post.type === 'need');
 
     if (activeTab === 'feed') {
-      if (activeCategory !== 'සියල්ල' && post.category !== activeCategory && !post.isPinned && !isOfficial) return false;
+      if (!isCategoryMatch && !post.isPinned && !isOfficial) return false;
       return isOfficial || post.visibility !== 'private';
     }
 
     if (activeTab === 'mybook') {
       if (post.visibility !== 'private') return false;
-      if (activeCategory !== 'සියල්ල' && post.category !== activeCategory) return false;
+      if (!isCategoryMatch) return false;
       const isOwner = (user && post.uid === user.uid) ||
                       (user && user.email && post.authorEmail && post.authorEmail.toLowerCase() === user.email.toLowerCase()) ||
                       (isMaster && (post.uid === 'user_malith' || post.author === 'අපේ පිං පොත'));
@@ -2286,7 +2296,7 @@ function renderFeed() {
     }
 
     if (activeTab === 'needs') {
-      if (activeCategory !== 'සියල්ල' && post.category !== activeCategory) return false;
+      if (!isCategoryMatch) return false;
       return post.type === 'need';
     }
 
@@ -2494,19 +2504,26 @@ export function appendNewPostsToFeed(allPosts, prevIdsStr) {
       const matchTitle = (post.title || '').toLowerCase().includes(searchQ);
       const matchDesc = (post.description || '').toLowerCase().includes(searchQ);
       const matchLoc = (post.location || '').toLowerCase().includes(searchQ);
-      if (!matchTitle && !matchDesc && !matchLoc) return false;
+      const matchAuthor = (post.author || (StorageService.resolveAuthorName ? StorageService.resolveAuthorName(post) : '')).toLowerCase().includes(searchQ);
+      if (!matchTitle && !matchDesc && !matchLoc && !matchAuthor) return false;
     }
 
-    const isOfficial = StorageService.isOfficialPost ? StorageService.isOfficialPost(post) : (post.isOfficial || post.author === 'අපේ පිං පොත');
+    const isOfficial = StorageService.isOfficialPost ? StorageService.isOfficialPost(post) : Boolean(post.isOfficial || post.author === 'අපේ පිං පොත');
+    post.isOfficial = isOfficial;
+
+    const isCategoryMatch = (activeCategory === 'සියල්ල') ||
+      (post.category === activeCategory) ||
+      (activeCategory === 'සුබපැතුම්' && (post.category === 'සිතුවිලි' || post.category === 'සාමාන්‍ය')) ||
+      (activeCategory === 'සමාජ සත්කාර' && post.type === 'need');
 
     if (activeTab === 'feed') {
-      if (activeCategory !== 'සියල්ල' && post.category !== activeCategory && !post.isPinned && !isOfficial) return false;
+      if (!isCategoryMatch && !post.isPinned && !isOfficial) return false;
       return isOfficial || post.visibility !== 'private';
     }
 
     if (activeTab === 'mybook') {
       if (post.visibility !== 'private') return false;
-      if (activeCategory !== 'සියල්ල' && post.category !== activeCategory) return false;
+      if (!isCategoryMatch) return false;
       const isOwner = (user && post.uid === user.uid) ||
                       (user && user.email && post.authorEmail && post.authorEmail.toLowerCase() === user.email.toLowerCase()) ||
                       (isMaster && (post.uid === 'user_malith' || post.author === 'අපේ පිං පොත'));
@@ -2514,7 +2531,7 @@ export function appendNewPostsToFeed(allPosts, prevIdsStr) {
     }
 
     if (activeTab === 'needs') {
-      if (activeCategory !== 'සියල්ල' && post.category !== activeCategory) return false;
+      if (!isCategoryMatch) return false;
       return post.type === 'need';
     }
 
@@ -3850,8 +3867,8 @@ window.openModal = function(type = 'merit', triggerPhoto = false, triggerVideo =
     } else {
       adminPostControls.classList.add('hidden');
       adminPostControls.style.display = 'none';
-      const chkOfficial = document.getElementById('postIsOfficial');
-      const chkPinned = document.getElementById('postIsPinned');
+      const chkOfficial = document.getElementById('adminIsOfficial') || document.getElementById('postIsOfficial');
+      const chkPinned = document.getElementById('adminIsPinned') || document.getElementById('postIsPinned');
       if (chkOfficial) chkOfficial.checked = false;
       if (chkPinned) chkPinned.checked = false;
     }

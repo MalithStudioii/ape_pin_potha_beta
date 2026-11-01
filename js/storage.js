@@ -816,9 +816,19 @@ export const StorageService = {
               const sanitizedSadhu = Math.max(0, rawSadhu);
               const normTimestamp = typeof data.timestamp === 'number' ? data.timestamp : (data.serverCreatedAt?.toMillis ? data.serverCreatedAt.toMillis() : (data.date ? Date.parse(data.date) || Date.now() : Date.now()));
 
+              // Optimize welcome banner image asset if bloated
+              let finalImg = data.image;
+              let finalImgs = Array.isArray(data.images) ? data.images : (data.image ? [data.image] : []);
+              if (doc.id === 'MtzAbfpxlg3odWmXHuEO') {
+                finalImg = 'assets/official-welcome-banner.webp';
+                finalImgs = ['assets/official-welcome-banner.webp'];
+              }
+
               posts.push({
                 id: doc.id,
                 ...data,
+                image: finalImg,
+                images: finalImgs,
                 timestamp: normTimestamp,
                 isOfficial: isOfficial,
                 sadhuCount: sanitizedSadhu,
@@ -844,7 +854,12 @@ export const StorageService = {
             }
           });
           posts.forEach(p => {
-            if (!map.has(p.id)) map.set(p.id, p);
+            if (map.has(p.id)) {
+              const existing = map.get(p.id);
+              map.set(p.id, { ...existing, ...p, isOfficial: existing.isOfficial || p.isOfficial });
+            } else {
+              map.set(p.id, p);
+            }
           });
 
           // If user had already loaded deeper pages, preserve them
@@ -1209,20 +1224,24 @@ export const StorageService = {
     const currentList = (this._loadedPosts && this._loadedPosts.length > 0) ? this._loadedPosts : this.getLocalPosts();
     const map = new Map();
     (currentList || []).forEach(p => map.set(p.id, p));
-    let hasNew = false;
+    let hasChanged = false;
     additionalPosts.forEach(p => {
       if (!p || this.isDummyTestPost(p)) return;
       if ((!deletedIds.includes(p.id) || p.isOfficial) && p.isDeleted !== true) {
         if (!map.has(p.id)) {
           map.set(p.id, p);
-          hasNew = true;
+          hasChanged = true;
         } else {
           const old = map.get(p.id);
-          map.set(p.id, { ...old, ...p });
+          const updated = { ...old, ...p };
+          if (JSON.stringify(old) !== JSON.stringify(updated)) {
+            map.set(p.id, updated);
+            hasChanged = true;
+          }
         }
       }
     });
-    if (hasNew) {
+    if (hasChanged) {
       this._loadedPosts = Array.from(map.values());
       this._cachedPosts = this._loadedPosts;
       this.syncPostsWithUserSadhus(this._loadedPosts);
@@ -1298,9 +1317,14 @@ export const StorageService = {
     }
 
     const rawImgs = f.images?.arrayValue?.values?.map(v => v.stringValue).filter(Boolean) || [];
-    const primaryImg = f.image?.stringValue || (rawImgs.length > 0 ? rawImgs[0] : null);
+    let primaryImg = f.image?.stringValue || (rawImgs.length > 0 ? rawImgs[0] : null);
     if (primaryImg && !rawImgs.includes(primaryImg)) {
       rawImgs.unshift(primaryImg);
+    }
+    if (id === 'MtzAbfpxlg3odWmXHuEO') {
+      primaryImg = 'assets/official-welcome-banner.webp';
+      rawImgs.length = 0;
+      rawImgs.push('assets/official-welcome-banner.webp');
     }
 
     const postObj = {
@@ -1483,7 +1507,10 @@ export const StorageService = {
     (regularPosts || []).forEach(p => {
       if (p && p.id && !this.isDummyTestPost(p)) {
         p.isOfficial = this.isOfficialPost(p);
-        if (!map.has(p.id)) {
+        if (map.has(p.id)) {
+          const existing = map.get(p.id);
+          map.set(p.id, { ...existing, ...p, isOfficial: existing.isOfficial || p.isOfficial });
+        } else {
           map.set(p.id, p);
         }
       }
@@ -2548,6 +2575,19 @@ export const StorageService = {
     // Keep memory and local cache immediately up-to-date
     this._cachedPosts = allPosts;
     this.cacheLocal(allPosts);
+    if (this.isOfficialPost(targetPost)) {
+      if (Array.isArray(this._cachedOfficialPosts)) {
+        const offIdx = this._cachedOfficialPosts.findIndex(p => p.id === targetPost.id);
+        if (offIdx !== -1) {
+          this._cachedOfficialPosts[offIdx] = { ...this._cachedOfficialPosts[offIdx], ...targetPost };
+        } else {
+          this._cachedOfficialPosts.push({ ...targetPost });
+        }
+        try {
+          localStorage.setItem('pinPotha_official_posts', JSON.stringify(this._cachedOfficialPosts));
+        } catch (e) {}
+      }
+    }
     this.notifyListeners(allPosts);
 
     if (isCloudReady && db) {
