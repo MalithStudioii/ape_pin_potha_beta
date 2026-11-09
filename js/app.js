@@ -1366,7 +1366,7 @@ function renderPostImagesCollage(post) {
       <div class="photo-collage-container" data-post-id="${post.id}" onclick="openPostLightbox('${post.id}', 0, this)" role="button" tabindex="0" style="cursor: pointer;">
         <div class="collage-grid collage-1">
           <div class="collage-item" data-index="0" onclick="event.stopPropagation(); openPostLightbox('${post.id}', 0, this)" role="button" tabindex="0" style="cursor: pointer;">
-            <img src="${cleanImages[0]}" alt="${Security.escapeHTML(post.title || '')}" onclick="event.stopPropagation(); openPostLightbox('${post.id}', 0, this)" decoding="async" role="button" style="cursor: pointer;">
+            <img src="${cleanImages[0]}" alt="${Security.escapeHTML(post.title || '')}" onclick="event.stopPropagation(); openPostLightbox('${post.id}', 0, this)" loading="lazy" decoding="async" role="button" style="cursor: pointer;">
           </div>
         </div>
       </div>
@@ -1380,7 +1380,7 @@ function renderPostImagesCollage(post) {
         <div class="collage-grid collage-2">
           ${cleanImages.map((img, i) => `
             <div class="collage-item" data-index="${i}" onclick="event.stopPropagation(); openPostLightbox('${post.id}', ${i}, this)" role="button" tabindex="0" style="cursor: pointer;">
-              <img src="${img}" alt="ඡායාරූපය ${i+1}" onclick="event.stopPropagation(); openPostLightbox('${post.id}', ${i}, this)" decoding="async" role="button" style="cursor: pointer;">
+              <img src="${img}" alt="ඡායාරූපය ${i+1}" onclick="event.stopPropagation(); openPostLightbox('${post.id}', ${i}, this)" loading="lazy" decoding="async" role="button" style="cursor: pointer;">
             </div>
           `).join('')}
         </div>
@@ -1395,7 +1395,7 @@ function renderPostImagesCollage(post) {
         <div class="collage-grid collage-3">
           ${cleanImages.map((img, i) => `
             <div class="collage-item" data-index="${i}" onclick="event.stopPropagation(); openPostLightbox('${post.id}', ${i}, this)" role="button" tabindex="0" style="cursor: pointer;">
-              <img src="${img}" alt="ඡායාරූපය ${i+1}" onclick="event.stopPropagation(); openPostLightbox('${post.id}', ${i}, this)" decoding="async" role="button" style="cursor: pointer;">
+              <img src="${img}" alt="ඡායාරූපය ${i+1}" onclick="event.stopPropagation(); openPostLightbox('${post.id}', ${i}, this)" loading="lazy" decoding="async" role="button" style="cursor: pointer;">
             </div>
           `).join('')}
         </div>
@@ -1410,7 +1410,7 @@ function renderPostImagesCollage(post) {
         <div class="collage-grid collage-4">
           ${cleanImages.map((img, i) => `
             <div class="collage-item" data-index="${i}" onclick="event.stopPropagation(); openPostLightbox('${post.id}', ${i}, this)" role="button" tabindex="0" style="cursor: pointer;">
-              <img src="${img}" alt="ඡායාරූපය ${i+1}" onclick="event.stopPropagation(); openPostLightbox('${post.id}', ${i}, this)" decoding="async" role="button" style="cursor: pointer;">
+              <img src="${img}" alt="ඡායාරූපය ${i+1}" onclick="event.stopPropagation(); openPostLightbox('${post.id}', ${i}, this)" loading="lazy" decoding="async" role="button" style="cursor: pointer;">
             </div>
           `).join('')}
         </div>
@@ -1429,7 +1429,7 @@ function renderPostImagesCollage(post) {
           const isLast = (i === 4 && remainingCount > 0);
           return `
             <div class="collage-item" data-index="${i}" onclick="event.stopPropagation(); openPostLightbox('${post.id}', ${i}, this)" role="button" tabindex="0" style="cursor: pointer;">
-              <img src="${img}" alt="ඡායාරූපය ${i+1}" onclick="event.stopPropagation(); openPostLightbox('${post.id}', ${i}, this)" loading="lazy" role="button" style="cursor: pointer;">
+              <img src="${img}" alt="ඡායාරූපය ${i+1}" onclick="event.stopPropagation(); openPostLightbox('${post.id}', ${i}, this)" loading="lazy" decoding="async" role="button" style="cursor: pointer;">
               ${isLast ? `
                 <div class="collage-overlay">
                   <span>+${remainingCount + 1}</span>
@@ -2002,7 +2002,7 @@ export function renderPostCardHTML(post, user) {
               </div>
             ` : `
               <div class="post-avatar ${isNeed ? 'need' : ''} ${isAuthorSangha ? 'sangha-framed-avatar' : ''}" onclick="viewUserProfile('${post.uid || ''}', '${Security.escapeHTML(postAuthorName)}', '${postAuthorPhoto ? Security.sanitizeUrl(postAuthorPhoto) : ''}')" style="cursor: pointer;" title="${Security.escapeHTML(postAuthorName)} ගේ Profile එක බලන්න">
-                ${postAuthorPhoto ? `<img src="${Security.sanitizeUrl(postAuthorPhoto)}" style="width: 100%; height: 100%; border-radius: 9999px; object-fit: cover;">` : `<span>${Security.escapeHTML(postAuthorName.charAt(0))}</span>`}
+                ${postAuthorPhoto ? `<img src="${Security.sanitizeUrl(postAuthorPhoto)}" loading="lazy" decoding="async" style="width: 100%; height: 100%; border-radius: 9999px; object-fit: cover;">` : `<span>${Security.escapeHTML(postAuthorName.charAt(0))}</span>`}
                 ${isAuthorSangha ? '<img src="assets/sangha-frame.png" class="sangha-vatapatha-frame" alt="වටාපත">' : ''}
               </div>
               <div>

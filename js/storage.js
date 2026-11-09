@@ -43,7 +43,7 @@ const SEED_NOTIFICATIONS = [];
 
 export const StorageService = {
   _cachedPosts: null,
-  FEED_PAGE_SIZE: 100,
+  FEED_PAGE_SIZE: 20,
   _lastVisibleDoc: null,
   _hasMorePosts: true,
   _isLoadingMore: false,
@@ -1227,15 +1227,15 @@ export const StorageService = {
     this._loadedPosts = cleanPosts;
 
     try {
-      // Store all active posts (up to 100) in single localStorage key so initial paint is instantaneous without quota exhaustion
-      const topCache = cleanPosts.slice(0, 100);
+      // Store top 30 posts in single localStorage key so initial paint is instantaneous (<100KB) without quota exhaustion
+      const topCache = cleanPosts.slice(0, 30);
       localStorage.setItem('pinPotha_posts', JSON.stringify(topCache));
       localStorage.removeItem('pinPotha_sandbox_posts');
     } catch (e) {
-      console.warn('[Storage] LocalStorage quota reached, storing lightweight top-50 cache:', e);
+      console.warn('[Storage] LocalStorage quota note, storing lightweight top-15 cache:', e);
       try {
-        const top50 = cleanPosts.slice(0, 50);
-        localStorage.setItem('pinPotha_posts', JSON.stringify(top50));
+        const top15 = cleanPosts.slice(0, 15);
+        localStorage.setItem('pinPotha_posts', JSON.stringify(top15));
         localStorage.removeItem('pinPotha_sandbox_posts');
       } catch (err2) {
         console.warn('[Storage] Fallback top 50 also failed, storing top 20 posts:', err2);
