@@ -1572,6 +1572,52 @@ body {
   color: #334155;
   line-height: 1.6;
   white-space: pre-line;
+  margin-bottom: 4px;
+}
+
+.post-desc-wrapper {
+  margin-bottom: 6px;
+}
+
+.post-see-more-btn {
+  display: inline-flex;
+  align-items: center;
+  background: transparent;
+  border: none;
+  color: #b45309;
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: inherit;
+  vertical-align: baseline;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.post-see-more-btn:hover {
+  color: #d97706;
+  text-decoration: underline;
+}
+
+.post-see-more-btn.see-less-btn {
+  display: inline-block;
+  margin-top: 6px;
+  color: #64748b;
+  font-size: 0.78rem;
+}
+
+.post-see-more-btn.see-less-btn:hover {
+  color: #b45309;
+}
+
+.post-see-more-btn .see-more-en {
+  font-size: 0.72rem;
+  opacity: 0.85;
+  margin-left: 3px;
+  font-weight: 600;
 }
 
 /* Post Media */

@@ -1709,6 +1709,69 @@ function formatPostContent(rawText) {
     .replace(/'/g, '&#39;');
 }
 
+/**
+ * Renders Post Description with smart 'See More' (තව කියවන්න...) toggle for long articles
+ */
+function renderPostDescriptionHTML(postId, rawDescription) {
+  if (!rawDescription) return '';
+  const trimmed = rawDescription.trim();
+  if (!trimmed) return '';
+
+  // Threshold: 160 characters or more than 3 lines
+  const lines = trimmed.split('\n');
+  const isLong = trimmed.length > 160 || lines.length > 3;
+
+  if (!isLong) {
+    return `<p class="post-desc" id="post-desc-${postId}">${formatPostContent(trimmed)}</p>`;
+  }
+
+  // Calculate clean preview text cutting gracefully at word boundary
+  let previewText = '';
+  if (lines.length > 3 && trimmed.length <= 160) {
+    previewText = lines.slice(0, 3).join('\n').trim();
+  } else {
+    const sliceTarget = trimmed.substring(0, 150);
+    const lastSpace = sliceTarget.lastIndexOf(' ');
+    previewText = (lastSpace > 110) ? sliceTarget.substring(0, lastSpace) : sliceTarget;
+  }
+
+  const formattedPreview = formatPostContent(previewText);
+  const formattedFull = formatPostContent(trimmed);
+
+  return `
+    <div class="post-desc-wrapper" id="post-desc-wrap-${postId}">
+      <p class="post-desc post-desc-collapsed" id="post-desc-collapsed-${postId}">
+        ${formattedPreview}... 
+        <button type="button" class="post-see-more-btn" onclick="togglePostContentExpansion('${postId}', event)">තව කියවන්න... <span class="see-more-en">(See more)</span></button>
+      </p>
+      <p class="post-desc post-desc-full" id="post-desc-full-${postId}" style="display: none;">
+        ${formattedFull}
+        <button type="button" class="post-see-more-btn see-less-btn" onclick="togglePostContentExpansion('${postId}', event)">අඩු කරන්න <span class="see-more-en">(See less)</span></button>
+      </p>
+    </div>
+  `;
+}
+
+window.togglePostContentExpansion = function(postId, event) {
+  if (event) {
+    event.stopPropagation();
+    event.preventDefault();
+  }
+  const collapsedEl = document.getElementById(`post-desc-collapsed-${postId}`);
+  const fullEl = document.getElementById(`post-desc-full-${postId}`);
+  if (!collapsedEl || !fullEl) return;
+
+  const isCollapsed = fullEl.style.display === 'none';
+  if (isCollapsed) {
+    collapsedEl.style.display = 'none';
+    fullEl.style.display = 'block';
+  } else {
+    fullEl.style.display = 'none';
+    collapsedEl.style.display = 'block';
+  }
+};
+
+
 function formatCommentTextWithMentions(rawText) {
   if (!rawText) return '';
   let escaped = Security.escapeHTML(rawText);
@@ -2080,7 +2143,7 @@ export function renderPostCardHTML(post, user) {
             }
             return '';
           })()}
-          <p class="post-desc">${formatPostContent(post.description)}</p>
+          ${renderPostDescriptionHTML(post.id, post.description)}
         </div>
 
         <!-- Media Images or Video Player Facade Grid -->
@@ -4059,6 +4122,14 @@ async function checkUrlDirectPost() {
           <span>${isNeedPost ? '🤝 ඔබ Facebook / සමාජ මාධ්‍ය සබැඳියෙන් විවෘත කළ සත්කාර ඇරයුම' : '✨ ඔබ Facebook / සමාජ මාධ්‍ය සබැඳියෙන් විවෘත කළ පින්කම'}</span>
         `;
         elem.insertBefore(banner, elem.firstChild);
+      }
+
+      // Automatically expand full text if collapsed
+      const collapsedDesc = document.getElementById(`post-desc-collapsed-${targetPostId}`);
+      const fullDesc = document.getElementById(`post-desc-full-${targetPostId}`);
+      if (collapsedDesc && fullDesc) {
+        collapsedDesc.style.display = 'none';
+        fullDesc.style.display = 'block';
       }
 
       // Automatically open comments/blessings section
