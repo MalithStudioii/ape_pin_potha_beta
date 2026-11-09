@@ -1251,6 +1251,36 @@ export const StorageService = {
   /**
    * Merge additional posts (Official announcements, user posts, etc.) into loaded posts without duplicates
    */
+  /**
+   * Fetch single post by ID directly from memory or Firestore (Essential for Facebook / Social traffic deep-linking)
+   */
+  async getPostById(postId) {
+    if (!postId) return null;
+    const local = (this.getLocalPosts() || []).find(p => p.id === postId);
+    if (local) return local;
+    if (this._cachedPosts) {
+      const cached = this._cachedPosts.find(p => p.id === postId);
+      if (cached) return cached;
+    }
+    try {
+      if (db && COLLECTIONS && COLLECTIONS.POSTS) {
+        const { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js');
+        const snap = await getDoc(doc(db, COLLECTIONS.POSTS, postId));
+        if (snap && snap.exists()) {
+          const postData = snap.data();
+          if (postData && postData.isDeleted !== true) {
+            const cloudPost = { id: snap.id, ...postData };
+            this.mergeAdditionalPosts([cloudPost]);
+            return cloudPost;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[Storage] getPostById error:', e);
+    }
+    return null;
+  },
+
   mergeAdditionalPosts(additionalPosts) {
     if (!Array.isArray(additionalPosts) || additionalPosts.length === 0) return;
     const deletedIds = this.getDeletedPostIds();

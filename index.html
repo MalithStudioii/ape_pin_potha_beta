@@ -51,12 +51,12 @@
     <link rel="apple-touch-icon" href="assets/icon-192.png">
 
     <!-- Core Pure CSS Design System -->
-    <link rel="stylesheet" href="css/styles.css?v=134">
+    <link rel="stylesheet" href="css/styles.css?v=135">
 
     <!-- Immediate Service Worker & Cache Invalidation Script -->
     <script>
       (function() {
-        var v = 'v134';
+        var v = 'v135';
         if (localStorage.getItem('pinPotha_active_build') !== v) {
           localStorage.setItem('pinPotha_active_build', v);
           try {
@@ -2803,48 +2803,64 @@
                     මෙම උතුම් කුසලය අන් අයටත් දැකබලා අනුමෝදන් වීමට පහත ආකාරයෙන් බෙදාගන්න:
                 </p>
 
-                <!-- Option 1: WhatsApp Status / Story Image Card -->
+                <!-- Option 1: Direct Facebook Share (With Auto-Generated Professional Copy & Deep Link) -->
+                <button type="button" id="btnShareFacebookDirect" onclick="shareToFacebookFromModal()" class="share-choice-btn" style="border: 1.5px solid #bfdbfe; background: linear-gradient(135deg, #eff6ff, #dbeafe); color: #1e40af; margin-bottom: 10px;">
+                    <div style="width: 44px; height: 44px; border-radius: 12px; background: #1877f2; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; flex-shrink: 0; box-shadow: 0 4px 12px rgba(24, 119, 242, 0.35);">
+                        <i class="fa-brands fa-facebook"></i>
+                    </div>
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="font-size: 0.88rem; font-weight: 700; color: #1e3a8a; display: flex; align-items: center; gap: 6px;">
+                            <span>Facebook එකට කෙලින්ම Share කරන්න</span>
+                            <span style="background: #1877f2; color: #fff; font-size: 0.58rem; padding: 1px 6px; border-radius: 9999px; font-weight: 800;">Popular</span>
+                        </div>
+                        <div style="font-size: 0.72rem; color: #1d4ed8; margin-top: 2px;">
+                            Facebook Feed, Groups, Pages වෙත ආකර්ෂණීය විස්තරය සහ Link එක සමඟ බෙදාගන්න
+                        </div>
+                    </div>
+                </button>
+
+                <!-- Option 2: Facebook, Threads & WhatsApp Viral Card Image -->
                 <button type="button" id="btnShareWhatsAppStatus" onclick="generateWhatsAppStatusCardFromModal()" class="share-choice-btn" style="border: 1.5px solid #a7f3d0; background: linear-gradient(135deg, #ecfdf5, #f0fdf4); color: #065f46; margin-bottom: 10px;">
-                    <div style="width: 44px; height: 44px; border-radius: 12px; background: #10b981; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">
-                        <i class="fa-brands fa-whatsapp"></i>
+                    <div style="width: 44px; height: 44px; border-radius: 12px; background: #059669; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);">
+                        <i class="fa-solid fa-photo-film"></i>
                     </div>
                     <div style="flex: 1; min-width: 0;">
                         <div style="font-size: 0.88rem; font-weight: 700; color: #065f46; display: flex; align-items: center; gap: 6px;">
-                            <span>WhatsApp Status ඡායාරූපය සාදන්න</span>
-                            <span style="background: #059669; color: #fff; font-size: 0.58rem; padding: 1px 6px; border-radius: 9999px; font-weight: 800;">Viral Card</span>
+                            <span>Facebook, Threads & WhatsApp Viral Card එක</span>
+                            <span style="background: #059669; color: #fff; font-size: 0.58rem; padding: 1px 6px; border-radius: 9999px; font-weight: 800;">HD Image</span>
                         </div>
                         <div style="font-size: 0.72rem; color: #047857; margin-top: 2px;">
-                            WhatsApp Status, FB Story සඳහා ලස්සන ඡායාරූප කාඩ්පතක් සාදා ගන්න (PNG)
+                            FB / Threads Ad පෙනුමැති, අන් අය ආකර්ෂණය කරගන්නා වෘත්තීය ඡායාරූප කාඩ්පතක් සාදා ගන්න
                         </div>
                     </div>
                 </button>
 
-                <!-- Option 2: Social / WhatsApp Link & Text -->
+                <!-- Option 3: WhatsApp / Other Social Channels -->
                 <button type="button" id="btnShareDirectLink" onclick="executeNativeOrWhatsAppShare()" class="share-choice-btn" style="border: 1.5px solid #fef3c7; background: #fffbeb; color: #92400e; margin-bottom: 10px;">
-                    <div style="width: 44px; height: 44px; border-radius: 12px; background: #f59e0b; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);">
-                        <i class="fa-solid fa-paper-plane"></i>
+                    <div style="width: 44px; height: 44px; border-radius: 12px; background: #25d366; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);">
+                        <i class="fa-brands fa-whatsapp"></i>
                     </div>
                     <div style="flex: 1; min-width: 0;">
                         <div style="font-size: 0.88rem; font-weight: 700; color: #78350f;">
-                            WhatsApp / සමාජ මාධ්‍ය වෙත යවන්න
+                            WhatsApp වෙත සෘජුව යවන්න
                         </div>
                         <div style="font-size: 0.72rem; color: #b45309; margin-top: 2px;">
-                            පින්කමේ සබැඳිය (Link) සහ විස්තරය කෙලින්ම Share කරන්න
+                            WhatsApp Chat, Groups වෙත සබැඳිය සහ විස්තරය යවන්න
                         </div>
                     </div>
                 </button>
 
-                <!-- Option 3: Copy Link -->
+                <!-- Option 4: Copy Link -->
                 <button type="button" onclick="copyPostLinkFromModal()" class="share-choice-btn" style="border: 1px solid #e2e8f0; background: #f8fafc; color: #334155;">
                     <div style="width: 40px; height: 40px; border-radius: 10px; background: #e2e8f0; color: #475569; display: flex; align-items: center; justify-content: center; font-size: 1.05rem; flex-shrink: 0;">
                         <i class="fa-regular fa-copy"></i>
                     </div>
                     <div style="flex: 1; min-width: 0;">
                         <div style="font-size: 0.84rem; font-weight: 700; color: #1e293b;">
-                            Link එක කොපි කරගන්න (Copy Link)
+                            Link එක කොපි කරගන්න (Copy Direct Link)
                         </div>
                         <div style="font-size: 0.7rem; color: #64748b; margin-top: 1px;">
-                            වෙබ් ලිපිනය ක්ලිප්බෝඩ් එකට පිටපත් වේ
+                            කෙලින්ම මෙම සටහනට පිවිසිය හැකි වෙබ් ලිපිනය ක්ලිප්බෝඩ් එකට පිටපත් වේ
                         </div>
                     </div>
                 </button>
@@ -2874,7 +2890,11 @@
                 <div style="display: flex; flex-direction: column; gap: 8px;">
                     <button type="button" id="btnDownloadStatusCard" onclick="downloadCurrentStatusCard()" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; border-radius: 12px; background: linear-gradient(135deg, #059669, #047857); color: #fff; font-weight: 700; font-size: 0.9rem; border: none; cursor: pointer; box-shadow: 0 4px 14px rgba(5, 150, 105, 0.3);">
                         <i class="fa-solid fa-download"></i>
-                        <span>ඡායාරූපය බාගත කරන්න (Download PNG)</span>
+                        <span>ඡායාරූපය බාගත කරන්න (Download HD PNG)</span>
+                    </button>
+                    <button type="button" id="btnShareStatusFacebook" onclick="shareStatusToFacebook()" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 11px; border-radius: 12px; background: #1877f2; color: #fff; font-weight: 700; font-size: 0.88rem; border: none; cursor: pointer; box-shadow: 0 4px 12px rgba(24, 119, 242, 0.3);">
+                        <i class="fa-brands fa-facebook"></i>
+                        <span>Facebook වෙත Share කරන්න (Link & Caption)</span>
                     </button>
                     <button type="button" id="btnShareStatusWhatsApp" onclick="openWhatsAppForStatusShare()" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 11px; border-radius: 12px; background: #25d366; color: #fff; font-weight: 700; font-size: 0.88rem; border: none; cursor: pointer;">
                         <i class="fa-brands fa-whatsapp"></i>
@@ -3437,6 +3457,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <!-- Application ES Modules -->
-    <script type="module" src="js/app.js?v=134"></script>
+    <script type="module" src="js/app.js?v=135"></script>
 </body>
 </html>

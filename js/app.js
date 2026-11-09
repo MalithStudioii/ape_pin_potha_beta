@@ -2096,35 +2096,40 @@ export function renderPostCardHTML(post, user) {
           </button>
         </div>
       ` : `
-        <div class="post-actions-grid">
+        <div class="post-actions-grid ${isNeed && post.contact ? 'has-call-btn' : ''}">
+          <!-- 1. Sadhu Action -->
           <button class="post-btn ${hasGivenSadhu ? 'liked' : ''}" id="sadhu-btn-${post.id}" onclick="handleSadhuClick('${post.id}', this)" title="${hasGivenSadhu ? 'සාදුකාරය ඉවත් කරන්න' : 'සාදුකාරයක් ලබා දෙන්න'}">
             <span class="post-btn-icon sadhu-icon">🙏</span>
             <span class="post-btn-count"><strong id="count-btn-${post.id}">${Math.max(0, parseInt(post.sadhuCount, 10) || 0)}</strong></span>
           </button>
 
-          <button class="post-btn" onclick="toggleCommentsSection('${post.id}')" title="${isGeneral ? 'සුබපැතුම්' : 'ප්‍රාර්ථනා'} බලන්න හෝ එක් කරන්න">
+          <!-- 2. Comment / Prarthana Action -->
+          <button class="post-btn" onclick="toggleCommentsSection('${post.id}')" title="${isNeed ? 'ප්‍රාර්ථනා / අදහස්' : (isGeneral ? 'සුබපැතුම්' : 'ප්‍රාර්ථනා')} බලන්න හෝ එක් කරන්න">
             <i class="fa-regular fa-comment-dots" style="color: #d97706;"></i>
             <span class="post-btn-count"><strong id="comments-btn-${post.id}">${comments.length}</strong></span>
           </button>
 
-          ${!isNeed && post.visibility !== 'private' ? `
-            <button class="post-btn" onclick="openRepostModal('${isRepost && orig ? orig.id : post.id}')" title="පවුරට යළි බෙදාගන්න (Repost)">
+          <!-- 3. Repost Action (Enabled for both merits and Sathkara needs) -->
+          ${post.visibility !== 'private' ? `
+            <button class="post-btn" onclick="openRepostModal('${isRepost && orig ? orig.id : post.id}')" title="${isNeed ? 'සත්කාරය පවුරට යළි බෙදාගන්න (Repost)' : 'පවුරට යළි බෙදාගන්න (Repost)'}">
               <i class="fa-solid fa-repeat" style="color: #059669;"></i>
               <span class="post-btn-count"><strong id="reposts-btn-${post.id}">${post.repostCount || 0}</strong></span>
             </button>
           ` : ''}
 
+          <!-- 4. Share Action (Facebook, Threads, WhatsApp, Copy Link) -->
+          <button class="post-btn" onclick="handleShare('${post.id}')" title="සමාජ මාධ්‍ය වෙත බෙදාගන්න (Facebook / WhatsApp / Share)">
+            <i class="fa-solid fa-share-nodes" style="color: #2563eb;"></i>
+            <span class="post-btn-count"><strong id="shares-btn-${post.id}">${post.shareCount || 0}</strong></span>
+          </button>
+
+          <!-- 5. Direct Phone Call Action (If contact provided for Sathkara need) -->
           ${isNeed && post.contact ? `
-            <a href="tel:${Security.sanitizePhone(post.contact)}" class="post-btn call-action" title="සෘජුව අමතන්න">
+            <a href="tel:${Security.sanitizePhone(post.contact)}" class="post-btn call-action" title="සෘජුව අමතන්න: ${Security.escapeHTML(post.contact)}">
               <i class="fa-solid fa-phone"></i>
               <span class="post-btn-count">අමතන්න</span>
             </a>
-          ` : `
-            <button class="post-btn" onclick="handleShare('${post.id}')" title="බාහිරව බෙදාගන්න (Share)">
-              <i class="fa-solid fa-share-nodes" style="color: #94a3b8;"></i>
-              <span class="post-btn-count"><strong id="shares-btn-${post.id}">${post.shareCount || 0}</strong></span>
-            </button>
-          `}
+          ` : ''}
         </div>
       `}
 
@@ -3493,6 +3498,78 @@ let currentGeneratedStatusCardDataUrl = null;
 let currentGeneratedStatusCardBlob = null;
 let currentGeneratedStatusCardFileName = null;
 
+/**
+ * Direct Facebook Share with Engaging Ad-style Caption & Deep Link
+ */
+window.shareToFacebookFromModal = function() {
+  const postId = currentShareTargetPostId;
+  if (!postId) return;
+
+  const allPosts = StorageService.getLocalPosts() || [];
+  let post = allPosts.find(p => p.id === postId);
+  if (!post && typeof currentPostsData !== 'undefined' && Array.isArray(currentPostsData)) {
+    post = currentPostsData.find(p => p.id === postId);
+  }
+  if (!post && StorageService._cachedPosts) {
+    post = StorageService._cachedPosts.find(p => p.id === postId);
+  }
+  if (!post) {
+    post = { id: postId, title: 'පින්කමක්', description: '', author: 'කල්‍යාණ මිත්‍ර' };
+  }
+
+  const isRepost = post.isRepost || !!post.originalPost;
+  const orig = post.originalPost || null;
+  const isNeed = post.type === 'need' || (orig && orig.type === 'need');
+  const realAuthor = post.isOfficial ? 'අපේ පිං පොත' : ((isRepost && orig) ? StorageService.resolveAuthorName(orig) : StorageService.resolveAuthorName(post));
+  const realTitle = (isRepost && orig && orig.title) ? orig.title : (post.title || 'පින්කම');
+  const realDesc = (isRepost && orig && orig.description) ? orig.description : (post.description || '');
+  const realPhone = (isRepost && orig && orig.contact) ? orig.contact : (post.contact || '');
+
+  const origin = window.location.origin;
+  const pathname = window.location.pathname;
+  const targetId = (isRepost && orig && orig.id) ? orig.id : post.id;
+  const tabParam = isNeed ? '&tab=needs' : '';
+  const postUrl = `${origin}${pathname}?post=${encodeURIComponent(targetId)}${tabParam}`;
+
+  try {
+    StorageService.incrementShare(targetId);
+    if (postId !== targetId) StorageService.incrementShare(postId);
+    if (post) post.shareCount = (post.shareCount || 0) + 1;
+    const shareBtnEl = document.getElementById(`shares-btn-${postId}`);
+    const shareStatEl = document.getElementById(`stat-shares-${postId}`);
+    if (shareBtnEl) shareBtnEl.innerText = post.shareCount;
+    if (shareStatEl) shareStatEl.innerText = post.shareCount;
+  } catch (e) {}
+
+  let cleanDesc = realDesc ? realDesc.replace(/<[^>]*>?/gm, '').trim() : '';
+  if (cleanDesc.length > 180) cleanDesc = cleanDesc.substring(0, 180) + '...';
+
+  let fbCopy = '';
+  if (isNeed) {
+    fbCopy = `🤝 විශේෂ සත්කාර ඇරයුමකි! | අපේ පිං පොත\n✨ ${realTitle}\n\n${cleanDesc ? `"${cleanDesc}"\n\n` : ''}${realPhone ? `📞 සෘජු දුරකථන අංකය: ${realPhone}\n\n` : ''}🙏 මෙම සත්කාරය පිළිබඳ සියලු ඡායාරූප දැකබලා ගැනීමට, සාදුකාර දී අනුමෝදන් වීමට / දායක වීමට අපේ පිං පොත වෙත පිවිසෙන්න:\n👉 ${postUrl}\n\n#ApePinPotha #SathkaraHawula #PinPotha #KalyanaMithra #SriLanka`;
+  } else {
+    fbCopy = `🌸 උතුම් පින්කමක් දැකබලා සතුටු සිතින් අනුමෝදන් වන්න! | අපේ පිං පොත\n✨ ${realTitle}\n(කල්‍යාණ මිත්‍ර: ${realAuthor})\n\n${cleanDesc ? `"${cleanDesc}"\n\n` : ''}🙏 මෙම පින්කම දැකබලා ඔබත් සාදුකාර දී පින් අනුමෝදන් වීමට පිං පොත වෙත පිවිසෙන්න:\n👉 ${postUrl}\n\n#ApePinPotha #PinPotha #KalyanaMithra #MeritSharing`;
+  }
+
+  try {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(fbCopy);
+    }
+  } catch (err) {}
+
+  closeShareChoiceModal();
+
+  const fbShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(postUrl)}`;
+  window.open(fbShareUrl, '_blank', 'width=640,height=580,scrollbars=yes,resizable=yes');
+
+  alert('Facebook සටහන සඳහා ආකර්ෂණීය විස්තරය සහ සබැඳිය (Link) පිටපත් කරගන්නා ලදී! 🎉\n\nFacebook කවුළුවෙහි එය Paste කළ හැක.');
+};
+
+window.shareStatusToFacebook = function() {
+  closeStatusCardPreviewModal();
+  shareToFacebookFromModal();
+};
+
 window.handleShare = function(postId) {
   SoundService.playShare();
   triggerHaptic(25);
@@ -3594,27 +3671,53 @@ window.generateWhatsAppStatusCardFromModal = async function() {
     const renderBox = document.getElementById('viralStatusCardRenderBox');
     if (!renderBox) throw new Error('Render box not found');
 
+    const isNeed = post.type === 'need' || (orig && orig.type === 'need');
     const cleanDesc = realDesc ? realDesc.replace(/<[^>]*>?/gm, '').trim() : '';
+    const cleanImages = (isRepost && orig)
+      ? (orig.images || (orig.image ? [orig.image] : []))
+      : (post.images || (post.image ? [post.image] : []));
+    const realPhone = (isRepost && orig && orig.contact) ? orig.contact : (post.contact || '');
+
+    // Multi-image collage for viral social card (Up to 4 images, like Facebook/Threads card)
+    let imagesMarkup = '';
+    if (cleanImages.length > 1) {
+      const displayImgs = cleanImages.slice(0, 4);
+      imagesMarkup = `
+        <div style="display: grid; grid-template-columns: ${displayImgs.length === 2 ? '1fr 1fr' : '1fr 1fr'}; gap: 4px; border-radius: 16px; overflow: hidden; border: 2px solid ${isNeed ? '#a7f3d0' : '#fde68a'}; margin-top: 12px; background: #000;">
+          ${displayImgs.map((img, idx) => `
+            <div style="height: ${displayImgs.length <= 2 ? '220px' : '160px'}; overflow: hidden; position: relative;">
+              <img src="${Security.sanitizeUrl(img)}" style="width: 100%; height: 100%; object-fit: cover; display: block;" crossorigin="anonymous">
+            </div>
+          `).join('')}
+        </div>
+      `;
+    } else if (realImage) {
+      imagesMarkup = `
+        <div style="border-radius: 16px; overflow: hidden; border: 2px solid ${isNeed ? '#a7f3d0' : '#fde68a'}; box-shadow: 0 4px 18px rgba(0,0,0,0.08); margin-top: 12px; background: #000; text-align: center;">
+          <img src="${Security.sanitizeUrl(realImage)}" style="max-width: 100%; max-height: 380px; width: 100%; object-fit: contain; display: block;" crossorigin="anonymous">
+        </div>
+      `;
+    }
 
     renderBox.innerHTML = `
-      <div id="statusCardRoot" style="width: 580px; background: #fffcf7; border: 10px solid #78350f; border-radius: 26px; overflow: hidden; font-family: 'Noto Sans Sinhala', -apple-system, BlinkMacSystemFont, sans-serif; box-shadow: 0 10px 40px rgba(0,0,0,0.3); color: #1e293b; box-sizing: border-box;">
+      <div id="statusCardRoot" style="width: 580px; background: #fffcf7; border: 10px solid ${isNeed ? '#065f46' : '#78350f'}; border-radius: 26px; overflow: hidden; font-family: 'Noto Sans Sinhala', -apple-system, BlinkMacSystemFont, sans-serif; box-shadow: 0 10px 40px rgba(0,0,0,0.3); color: #1e293b; box-sizing: border-box;">
         
-        <!-- Top Golden Gradient Strip -->
-        <div style="background: linear-gradient(90deg, #d97706, #fbbf24, #f59e0b, #b45309); height: 8px;"></div>
+        <!-- Top Strip -->
+        <div style="background: ${isNeed ? 'linear-gradient(90deg, #059669, #10b981, #f59e0b, #d97706)' : 'linear-gradient(90deg, #d97706, #fbbf24, #f59e0b, #b45309)'}; height: 8px;"></div>
         
         <!-- Header with Branding -->
-        <div style="background: linear-gradient(135deg, #451a03 0%, #78350f 60%, #92400e 100%); padding: 18px 24px; color: #fff; display: flex; align-items: center; justify-content: space-between;">
+        <div style="background: ${isNeed ? 'linear-gradient(135deg, #064e3b 0%, #065f46 60%, #047857 100%)' : 'linear-gradient(135deg, #451a03 0%, #78350f 60%, #92400e 100%)'}; padding: 18px 24px; color: #fff; display: flex; align-items: center; justify-content: space-between;">
           <div style="display: flex; align-items: center; gap: 14px;">
-            <div style="width: 48px; height: 48px; border-radius: 50%; background: rgba(251, 191, 36, 0.2); border: 2px solid #fbbf24; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: #fbbf24;">
-              ☸️
+            <div style="width: 48px; height: 48px; border-radius: 50%; background: ${isNeed ? 'rgba(52, 211, 153, 0.25)' : 'rgba(251, 191, 36, 0.2)'}; border: 2px solid ${isNeed ? '#34d399' : '#fbbf24'}; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: #fff;">
+              ${isNeed ? '🤝' : '☸️'}
             </div>
             <div>
               <div style="font-family: 'Noto Serif Sinhala', serif; font-size: 1.35rem; font-weight: 700; color: #fffbeb; letter-spacing: 0.5px;">පිං පොත</div>
-              <div style="font-size: 0.74rem; color: #fef3c7; opacity: 0.9;">කල්‍යාණ මිත්‍ර පුණ්‍ය ජාලය • apepinpotha.lk</div>
+              <div style="font-size: 0.74rem; color: ${isNeed ? '#a7f3d0' : '#fef3c7'}; opacity: 0.95;">${isNeed ? 'සත්කාර හවුල • apepinpotha.lk' : 'කල්‍යාණ මිත්‍ර පුණ්‍ය ජාලය • apepinpotha.lk'}</div>
             </div>
           </div>
-          <div style="background: rgba(251, 191, 36, 0.25); border: 1px solid #fbbf24; color: #fef3c7; font-size: 0.74rem; font-weight: 700; padding: 4px 12px; border-radius: 9999px;">
-            ${Security.escapeHTML(realCategory)}
+          <div style="background: ${isNeed ? '#dc2626' : 'rgba(251, 191, 36, 0.25)'}; border: 1px solid ${isNeed ? '#ef4444' : '#fbbf24'}; color: #fff; font-size: 0.76rem; font-weight: 800; padding: 5px 14px; border-radius: 9999px; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">
+            ${isNeed ? '🚨 සත්කාර ඇරයුමකි' : Security.escapeHTML(realCategory)}
           </div>
         </div>
 
@@ -3635,8 +3738,8 @@ window.generateWhatsAppStatusCardFromModal = async function() {
             </div>
           </div>
           <div style="text-align: right;">
-            <div style="font-size: 0.74rem; font-weight: 700; color: #b45309; background: #fffbeb; padding: 4px 12px; border-radius: 8px; border: 1px solid #fde68a;">
-              🙏 සාදු සාදු සාදු!
+            <div style="font-size: 0.74rem; font-weight: 700; color: ${isNeed ? '#065f46' : '#b45309'}; background: ${isNeed ? '#ecfdf5' : '#fffbeb'}; padding: 4px 12px; border-radius: 8px; border: 1px solid ${isNeed ? '#a7f3d0' : '#fde68a'};">
+              ${isNeed ? '🤝 සත්කාර හවුල' : '🙏 සාදු සාදු සාදු!'}
             </div>
           </div>
         </div>
@@ -3648,29 +3751,44 @@ window.generateWhatsAppStatusCardFromModal = async function() {
           </h2>
 
           ${cleanDesc ? `
-          <p style="font-size: 0.92rem; color: #334155; line-height: 1.65; white-space: pre-line; margin-bottom: 16px;">
+          <p style="font-size: 0.92rem; color: #334155; line-height: 1.65; white-space: pre-line; margin-bottom: 14px;">
             ${Security.escapeHTML(cleanDesc)}
           </p>
           ` : ''}
 
-          ${realImage ? `
-          <div style="border-radius: 16px; overflow: hidden; border: 2px solid #fde68a; box-shadow: 0 4px 18px rgba(0,0,0,0.08); margin-top: 10px; background: #000; text-align: center;">
-            <img src="${realImage}" style="max-width: 100%; max-height: 380px; width: 100%; object-fit: contain; display: block;" crossorigin="anonymous">
+          ${imagesMarkup}
+
+          ${(isNeed && realPhone) ? `
+          <div style="background: #ecfdf5; border: 2px dashed #059669; padding: 12px 18px; border-radius: 14px; margin-top: 14px; display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="font-size: 1.25rem;">📞</span>
+              <div>
+                <div style="font-size: 0.7rem; color: #047857; font-weight: 700;">සෘජුව අමතන්න (Contact):</div>
+                <div style="font-size: 1.05rem; font-weight: 800; color: #065f46; letter-spacing: 0.5px;">${Security.escapeHTML(realPhone)}</div>
+              </div>
+            </div>
+            <span style="background: #059669; color: #fff; font-size: 0.72rem; font-weight: 700; padding: 4px 12px; border-radius: 9999px;">සත්‍යාපිතයි ✓</span>
+          </div>
+          ` : ''}
+
+          ${isNeed ? `
+          <div style="background: #fffbeb; border: 1px solid #fef3c7; border-radius: 12px; padding: 10px 14px; margin-top: 12px; font-size: 0.82rem; color: #92400e; font-weight: 600; text-align: center; line-height: 1.5;">
+            🌸 මෙම පණිවිඩය තවත් කල්‍යාණ මිතුරෙකුට දැකගැනීම පිණිස Share කර ඔබත් ධර්ම දානමය කුසලයට හිමිකම් කියන්න!
           </div>
           ` : ''}
         </div>
 
         <!-- Bottom Footer Banner -->
-        <div style="background: linear-gradient(135deg, #78350f, #451a03); padding: 16px 24px; color: #fff; display: flex; align-items: center; justify-content: space-between; border-top: 3px solid #fbbf24;">
+        <div style="background: ${isNeed ? 'linear-gradient(135deg, #064e3b, #065f46)' : 'linear-gradient(135deg, #78350f, #451a03)'}; padding: 16px 24px; color: #fff; display: flex; align-items: center; justify-content: space-between; border-top: 3px solid ${isNeed ? '#34d399' : '#fbbf24'};">
           <div>
-            <div style="font-size: 0.95rem; font-weight: 700; color: #fef08a;">
-              🙏 දැකබලා සතුටු සිතින් අනුමෝදන් වන්න!
+            <div style="font-size: 0.95rem; font-weight: 700; color: ${isNeed ? '#a7f3d0' : '#fef08a'};">
+              ${isNeed ? '👉 වැඩිදුර විස්තර දැකබලා ගැනීමට / දායක වීමට:' : '🙏 දැකබලා සතුටු සිතින් අනුමෝදන් වන්න!'}
             </div>
             <div style="font-size: 0.74rem; color: #fef3c7; opacity: 0.9; margin-top: 2px;">
-              ඔබ සිදුකරන පින්කම් සටහන් කරගන්න පිං පොතට එක්වන්න
+              ලංකාවේ ප්‍රථම ඩිජිටල් පුණ්‍ය ජාලය • අපේ පිං පොත
             </div>
           </div>
-          <div style="background: #fbbf24; color: #451a03; font-weight: 800; font-size: 0.78rem; padding: 6px 14px; border-radius: 9999px; white-space: nowrap;">
+          <div style="background: ${isNeed ? '#34d399' : '#fbbf24'}; color: ${isNeed ? '#064e3b' : '#451a03'}; font-weight: 800; font-size: 0.82rem; padding: 7px 16px; border-radius: 9999px; white-space: nowrap;">
             🌐 apepinpotha.lk
           </div>
         </div>
@@ -3889,28 +4007,80 @@ window.copyPostLinkFromModal = async function() {
   }
 };
 
-// Check for deep-linked post in URL query (?post=post_123)
-function checkUrlDirectPost() {
+// Check for deep-linked post in URL query (?post=post_123) - Instant Facebook / Social traffic arrival
+async function checkUrlDirectPost() {
   const urlParams = new URLSearchParams(window.location.search);
   const targetPostId = urlParams.get('post');
   if (!targetPostId) return;
 
-  const tryScroll = () => {
+  const tabParam = urlParams.get('tab');
+
+  // 1. Locate post in current memory or local cache
+  let targetPost = (currentPostsData || []).find(p => p.id === targetPostId);
+  if (!targetPost) {
+    const allPosts = StorageService.getLocalPosts() || [];
+    targetPost = allPosts.find(p => p.id === targetPostId);
+  }
+  if (!targetPost && StorageService._cachedPosts) {
+    targetPost = StorageService._cachedPosts.find(p => p.id === targetPostId);
+  }
+
+  // 2. If not in local storage (e.g. brand new visitor arriving from Facebook link), fetch directly from Firestore by ID!
+  if (!targetPost && typeof StorageService.getPostById === 'function') {
+    try {
+      targetPost = await StorageService.getPostById(targetPostId);
+    } catch (e) {
+      console.warn('[DirectPost] Fetch error:', e);
+    }
+  }
+
+  // 3. If it's a Sathkara Need post or ?tab=needs, switch to needs tab
+  const isNeedPost = targetPost && targetPost.type === 'need';
+  if ((isNeedPost || tabParam === 'needs') && activeTab !== 'needs') {
+    switchTab('needs', false);
+  }
+
+  // 4. If we have the post, ensure it is at index 0 of currentPostsData so it renders right at the top
+  if (targetPost) {
+    currentPostsData = (currentPostsData || []).filter(p => p.id !== targetPostId);
+    currentPostsData.unshift(targetPost);
+    renderFeed();
+  }
+
+  // 5. Scroll to element, add arrival banner, and expand comments for high engagement
+  const tryFocusPost = () => {
     const elem = document.getElementById(`post-elem-${targetPostId}`);
     if (elem) {
+      if (!elem.querySelector('.shared-post-direct-banner')) {
+        const banner = document.createElement('div');
+        banner.className = 'shared-post-direct-banner';
+        banner.innerHTML = `
+          <i class="fa-solid fa-arrow-up-right-from-square" style="color: #d97706;"></i>
+          <span>${isNeedPost ? '🤝 ඔබ Facebook / සමාජ මාධ්‍ය සබැඳියෙන් විවෘත කළ සත්කාර ඇරයුම' : '✨ ඔබ Facebook / සමාජ මාධ්‍ය සබැඳියෙන් විවෘත කළ පින්කම'}</span>
+        `;
+        elem.insertBefore(banner, elem.firstChild);
+      }
+
+      // Automatically open comments/blessings section
+      const commentsBox = document.getElementById(`comments-box-${targetPostId}`);
+      if (commentsBox && commentsBox.style.display === 'none') {
+        commentsBox.style.display = 'block';
+      }
+
       elem.scrollIntoView({ behavior: 'smooth', block: 'center' });
       elem.classList.add('highlight-shared-post');
       setTimeout(() => {
         elem.classList.remove('highlight-shared-post');
-      }, 4500);
+      }, 6000);
       return true;
     }
     return false;
   };
 
-  if (!tryScroll()) {
-    setTimeout(tryScroll, 600);
-    setTimeout(tryScroll, 1600);
+  if (!tryFocusPost()) {
+    setTimeout(tryFocusPost, 400);
+    setTimeout(tryFocusPost, 1200);
+    setTimeout(tryFocusPost, 2400);
   }
 }
 
