@@ -493,6 +493,18 @@ function updateUserInfoUI() {
   if (displayEl) displayEl.innerText = activeName;
   if (sideNameEl) sideNameEl.innerText = activeName;
 
+  // Discreet Badge (Crown / Shield) next to Left Sidebar Name (No role text displayed)
+  const sideBadgeEl = document.getElementById('sideUserRoleBadge');
+  if (sideBadgeEl) {
+    if (isMaster) {
+      sideBadgeEl.innerHTML = '<span class="badge-crown" style="font-size: 0.85rem;" title="කල්‍යාණ මිත්‍ර">👑</span>';
+    } else if (isSub) {
+      sideBadgeEl.innerHTML = '<span class="badge-shield" style="font-size: 0.85rem;" title="කල්‍යාණ මිත්‍ර">🛡️</span>';
+    } else {
+      sideBadgeEl.innerHTML = '';
+    }
+  }
+
   // Toggle Header Crown Button for Master Admin & Sub-Admins
   if (crownBtn) {
     if (isAdminUser) {
@@ -550,26 +562,22 @@ function updateUserInfoUI() {
   applyAvatar(sideAvatarEl);
   applyAvatar(composerAvatarEl);
 
-  // Sync Left Sidebar User Role Bio
+  // Sync Left Sidebar User Role Bio (Display standard friendly bio, never broadcast Admin/Master Admin text)
   const sideBioEl = document.getElementById('sideUserBio');
   if (sideBioEl) {
-    if (isMaster) sideBioEl.textContent = '👑 ප්‍රධාන පරිපාලක (Master Admin)';
-    else if (isSub) sideBioEl.textContent = '🛡️ පිං පොත පරිපාලක (Admin)';
-    else if (user.role === 'monk' || user.isMonk) sideBioEl.textContent = 'පූජනීය මහා සංඝරත්නය';
-    else sideBioEl.textContent = user.bio || 'කල්‍යාණ මිත්‍ර පුණ්‍ය සාමාජික';
+    if (user.role === 'monk' || user.isMonk) sideBioEl.textContent = 'පූජනීය මහා සංඝරත්නය';
+    else sideBioEl.textContent = user.bio || 'කල්‍යාණ මිත්‍ර සාමාජික';
   }
 
-  // Sync User Info inside Mobile Slide Drawer
+  // Sync User Info inside Mobile Slide Drawer (Display standard friendly status, never broadcast Admin/Master Admin text)
   const drawerAvatarEl = document.getElementById('drawerNavAvatar');
   const drawerNameEl = document.getElementById('drawerUserName');
   const drawerStatusEl = document.getElementById('drawerUserStatus');
   if (drawerNameEl) drawerNameEl.innerText = user.name || 'කල්‍යාණ මිතුරා';
   applyAvatar(drawerAvatarEl);
   if (drawerStatusEl) {
-    if (isMaster) drawerStatusEl.textContent = '👑 Master Admin';
-    else if (isSub) drawerStatusEl.textContent = '🛡️ Admin';
-    else if (user.role === 'monk' || user.isMonk) drawerStatusEl.textContent = 'පූජනීය මහා සංඝරත්නය';
-    else drawerStatusEl.textContent = 'කල්‍යාණ මිත්‍ර සාමාජික';
+    if (user.role === 'monk' || user.isMonk) drawerStatusEl.textContent = 'පූජනීය මහා සංඝරත්නය';
+    else drawerStatusEl.textContent = user.bio || 'කල්‍යාණ මිත්‍ර සාමාජික';
   }
 
   // Update Kalyana Mithra pending request badges
@@ -762,7 +770,7 @@ window.openMemberProfileModal = async function(uid, authorName, authorPhoto = nu
   if (nameEl) {
     nameEl.innerHTML = `
       ${Security.escapeHTML(member.name || authorName || 'කල්‍යාණ මිත්‍ර')}
-      ${isProfileMaster ? `<span class="badge-crown" style="font-size: 1.15rem;" title="Master Admin">👑</span>` : (isProfileSubAdmin ? `<span class="badge-shield" style="font-size: 1.05rem;" title="පරිපාලක (Admin)">🛡️</span>` : '')}
+      ${isProfileMaster ? `<span class="badge-crown" style="font-size: 1.15rem;" title="කල්‍යාණ මිත්‍ර">👑</span>` : (isProfileSubAdmin ? `<span class="badge-shield" style="font-size: 1.05rem;" title="කල්‍යාණ මිත්‍ර">🛡️</span>` : '')}
     `;
   }
 
@@ -771,12 +779,6 @@ window.openMemberProfileModal = async function(uid, authorName, authorPhoto = nu
     if (isSangha) {
       badgeEl.className = 'sangha-verified-badge';
       badgeEl.innerHTML = `<i class="fa-solid fa-dharmachakra"></i> <span>පූජනීය මහා සංඝරත්නය</span>`;
-    } else if (isProfileMaster) {
-      badgeEl.className = 'official-author-badge';
-      badgeEl.innerHTML = `<span class="badge-crown">👑</span> <span>Master Admin</span>`;
-    } else if (isProfileSubAdmin) {
-      badgeEl.className = 'admin-shield-badge';
-      badgeEl.innerHTML = `<span class="badge-shield">🛡️</span> <span>පිං පොත පරිපාලක</span>`;
     } else if (member.email) {
       badgeEl.className = 'verified-pill';
       badgeEl.innerHTML = `<i class="fa-solid fa-circle-check"></i> <span>Google සත්‍යාපිත කල්‍යාණ මිත්‍ර</span>`;
@@ -1767,7 +1769,7 @@ function renderSingleCommentHTML(c, postId, user, index) {
         <div class="comment-author-row">
           <div class="comment-meta-left">
             <span class="author-click-link" onclick="viewUserProfile('${c.uid || ''}', '${Security.escapeHTML(cAuthorName)}', '${cAuthorPhoto ? Security.sanitizeUrl(cAuthorPhoto) : ''}')" style="cursor: pointer; font-weight: 700; color: #1e293b;" title="${Security.escapeHTML(cAuthorName)} ගේ Profile එක බලන්න">${Security.escapeHTML(cAuthorName)}</span>
-            ${isCommentMaster ? `<span class="badge-crown" title="Master Admin">👑</span>` : (isCommentSubAdmin ? `<span class="badge-shield" title="පරිපාලක (Admin)">🛡️</span>` : '')}
+            ${isCommentMaster ? `<span class="badge-crown" title="කල්‍යාණ මිත්‍ර">👑</span>` : (isCommentSubAdmin ? `<span class="badge-shield" title="කල්‍යාණ මිත්‍ර">🛡️</span>` : '')}
             ${isCommentSangha ? '<span class="sangha-author-badge" style="padding: 1.5px 7px; font-size: 0.62rem; margin-left: 4px;"><i class="fa-solid fa-dharmachakra"></i> පූජනීය සංඝරත්නය</span>' : ''}
             <span class="comment-time">${Security.escapeHTML(formatRelativeTimeSinhala(c.timestamp, c.time || 'දැන්'))}</span>
             ${c.isEdited ? '<span class="comment-edited-tag" title="මෙම ප්‍රාර්ථනාව සංස්කරණය කරන ලදී">(සංස්කරණය කළ)</span>' : ''}
@@ -2008,7 +2010,7 @@ export function renderPostCardHTML(post, user) {
               <div>
                 <div class="post-badges-wrap">
                   <span class="post-author-name author-click-link" onclick="viewUserProfile('${post.uid || ''}', '${Security.escapeHTML(postAuthorName)}', '${postAuthorPhoto ? Security.sanitizeUrl(postAuthorPhoto) : ''}')" style="cursor: pointer;" title="${Security.escapeHTML(postAuthorName)} ගේ Profile එක බලන්න">${Security.escapeHTML(postAuthorName)}</span>
-                  ${isAuthorMaster ? `<span class="badge-crown" title="Master Admin">👑</span>` : (isAuthorSubAdmin ? `<span class="badge-shield" title="පරිපාලක (Admin)">🛡️</span>` : '')}
+                  ${isAuthorMaster ? `<span class="badge-crown" title="කල්‍යාණ මිත්‍ර">👑</span>` : (isAuthorSubAdmin ? `<span class="badge-shield" title="කල්‍යාණ මිත්‍ර">🛡️</span>` : '')}
                   ${isAuthorSangha ? `
                     <span class="sangha-author-badge" title="පූජනීය මහා සංඝරත්නය"><i class="fa-solid fa-dharmachakra"></i> පූජනීය සංඝරත්නය</span>
                   ` : ''}
@@ -5843,7 +5845,7 @@ function renderProfileView() {
   if (nameEl) {
     nameEl.innerHTML = `
       ${Security.escapeHTML(user.name || 'කල්‍යාණ මිත්‍ර')}
-      ${isMaster ? `<span class="badge-crown" style="font-size: 1.15rem;" title="Master Admin">👑</span>` : (isSub ? `<span class="badge-shield" style="font-size: 1.05rem;" title="පරිපාලක (Admin)">🛡️</span>` : '')}
+      ${isMaster ? `<span class="badge-crown" style="font-size: 1.15rem;" title="කල්‍යාණ මිත්‍ර">👑</span>` : (isSub ? `<span class="badge-shield" style="font-size: 1.05rem;" title="කල්‍යාණ මිත්‍ර">🛡️</span>` : '')}
     `;
   }
 
@@ -5853,12 +5855,6 @@ function renderProfileView() {
     if (isSangha) {
       badgeEl.className = 'sangha-verified-badge';
       badgeEl.innerHTML = `<i class="fa-solid fa-dharmachakra"></i> <span>පූජනීය මහා සංඝරත්නය</span>`;
-    } else if (isMaster) {
-      badgeEl.className = 'official-author-badge';
-      badgeEl.innerHTML = `<span class="badge-crown">👑</span> <span>Master Admin</span>`;
-    } else if (isSub) {
-      badgeEl.className = 'admin-shield-badge';
-      badgeEl.innerHTML = `<span class="badge-shield">🛡️</span> <span>පිං පොත පරිපාලක</span>`;
     } else if (user.email && !user.isAnonymous) {
       badgeEl.className = 'verified-pill';
       badgeEl.innerHTML = `<i class="fa-solid fa-circle-check"></i> <span>Google සත්‍යාපිත කල්‍යාණ මිත්‍ර</span>`;
@@ -6236,7 +6232,7 @@ function renderProfileSubTabContent(user, myPosts, myPhotosPosts, myPrivatePosts
             <div class="mithra-card-details" onclick="openMemberProfileModal('${m.uid}', '${Security.escapeHTML(m.name)}', '${m.photo ? Security.sanitizeUrl(m.photo) : ''}', '${m.coverImage ? Security.sanitizeUrl(m.coverImage) : ''}')" style="cursor: pointer;">
               <div class="mithra-card-name">
                 <span>${Security.escapeHTML(m.name || 'කල්‍යාණ මිත්‍ර')}</span>
-                ${isMemberMaster ? `<span class="badge-crown" title="Master Admin">👑</span>` : (isMemberSubAdmin ? `<span class="badge-shield" title="පරිපාලක (Admin)">🛡️</span>` : '')}
+                ${isMemberMaster ? `<span class="badge-crown" title="කල්‍යාණ මිත්‍ර">👑</span>` : (isMemberSubAdmin ? `<span class="badge-shield" title="කල්‍යාණ මිත්‍ර">🛡️</span>` : '')}
                 ${isMemberSangha ? `<span class="sangha-author-badge" style="margin-left: 4px; padding: 1px 7px; font-size: 0.62rem;"><i class="fa-solid fa-dharmachakra"></i> පූජනීය සංඝරත්නය</span>` : ''}
               </div>
               <div class="mithra-card-loc">
@@ -7416,7 +7412,7 @@ window.renderCommunityDirectory = async function(filtered = null) {
         <div class="mithra-card-details">
           <div class="mithra-card-name" style="cursor: pointer;">
             <span>${Security.escapeHTML(m.name || 'කල්‍යාණ මිත්‍ර')}</span>
-            ${isMemberMaster ? `<span class="badge-crown" title="Master Admin">👑</span>` : (isMemberSubAdmin ? `<span class="badge-shield" title="පරිපාලක (Admin)">🛡️</span>` : '')}
+            ${isMemberMaster ? `<span class="badge-crown" title="කල්‍යාණ මිත්‍ර">👑</span>` : (isMemberSubAdmin ? `<span class="badge-shield" title="කල්‍යාණ මිත්‍ර">🛡️</span>` : '')}
             ${isMemberSangha ? `<span class="sangha-author-badge" style="margin-left: 4px; padding: 1px 7px; font-size: 0.62rem;"><i class="fa-solid fa-dharmachakra"></i> පූජනීය සංඝරත්නය</span>` : ''}
           </div>
           <div class="mithra-card-loc">
@@ -7995,7 +7991,7 @@ window.renderKmpDirectoryView = async function(forceRefresh = false) {
           <div class="kmp-card-meta">
             <div class="kmp-name-row">
               <span class="kmp-member-name">${Security.escapeHTML(m.name || 'කල්‍යාණ මිත්‍ර')}</span>
-              ${isMemberMaster ? `<span class="badge-crown" title="Master Admin">👑</span>` : (isMemberSubAdmin ? `<span class="badge-shield" title="පරිපාලක (Admin)">🛡️</span>` : '')}
+              ${isMemberMaster ? `<span class="badge-crown" title="කල්‍යාණ මිත්‍ර">👑</span>` : (isMemberSubAdmin ? `<span class="badge-shield" title="කල්‍යාණ මිත්‍ර">🛡️</span>` : '')}
               ${isMemberSangha ? `<span class="sangha-author-badge" style="margin-left: 3px; padding: 1px 6px; font-size: 0.6rem;"><i class="fa-solid fa-dharmachakra"></i> පූජනීය සංඝරත්නය</span>` : ''}
             </div>
             ${m.isOnline

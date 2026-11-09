@@ -51,12 +51,12 @@
     <link rel="apple-touch-icon" href="assets/icon-192.png">
 
     <!-- Core Pure CSS Design System -->
-    <link rel="stylesheet" href="css/styles.css?v=133">
+    <link rel="stylesheet" href="css/styles.css?v=134">
 
     <!-- Immediate Service Worker & Cache Invalidation Script -->
     <script>
       (function() {
-        var v = 'v133';
+        var v = 'v134';
         if (localStorage.getItem('pinPotha_active_build') !== v) {
           localStorage.setItem('pinPotha_active_build', v);
           try {
@@ -126,9 +126,6 @@
                         <i class="fa-solid fa-hand-holding-heart"></i>
                         <span class="badge-live-mini">Live</span>
                     </div>
-                </button>
-                <button onclick="switchTab('aranya')" id="desk-tab-aranya" class="nav-tab-btn" title="ශ්‍රී ලංකා ආරණ්‍ය සේනාසන නාමාවලිය" aria-label="ආරණ්‍ය සේනාසන නාමාවලිය">
-                    <i class="fa-solid fa-mountain-sun" style="color: #10b981;"></i>
                 </button>
                 <button onclick="switchTab('friends')" id="desk-tab-friends" class="nav-tab-btn" title="කල්‍යාණ මිතුරු පවුර" aria-label="කල්‍යාණ මිතුරු පවුර">
                     <i class="fa-solid fa-user-group" style="color: #0284c7;"></i>
@@ -244,9 +241,9 @@
                 <div class="profile-card-body">
                     <div class="profile-name" onclick="switchTab('profile')" style="cursor: pointer;">
                         <span id="sideUserName">මලිත් දුෂාන්ත</span>
-                        <i class="fa-solid fa-crown" style="color: #f59e0b; font-size: 0.75rem;" title="Master Admin"></i>
+                        <span id="sideUserRoleBadge"><span class="badge-crown" style="font-size: 0.85rem;" title="කල්‍යාණ මිත්‍ර">👑</span></span>
                     </div>
-                    <p class="profile-role" id="sideUserBio">👑 ප්‍රධාන පරිපාලක (Master Admin)</p>
+                    <p class="profile-role" id="sideUserBio">කල්‍යාණ මිත්‍ර සාමාජික</p>
 
                     <!-- Personal Stats -->
                     <div class="stats-grid">
@@ -3440,6 +3437,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <!-- Application ES Modules -->
-    <script type="module" src="js/app.js?v=133"></script>
+    <script type="module" src="js/app.js?v=134"></script>
 </body>
 </html>

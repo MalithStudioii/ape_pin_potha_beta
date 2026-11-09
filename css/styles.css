@@ -537,15 +537,15 @@ body {
   color: #ffffff;
 }
 
-/* Header 3-Lines Hamburger Menu Button */
+/* Header 3-Lines Hamburger Menu Button (Mobile Only - Hidden on Desktop/PC) */
 .header-menu-btn {
+  display: none !important;
   width: 38px;
   height: 38px;
   border-radius: var(--radius-full);
   background: rgba(26, 10, 2, 0.45);
   border: 1px solid rgba(251, 191, 36, 0.35);
   color: #fef3c7;
-  display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
