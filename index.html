@@ -51,19 +51,18 @@
     <link rel="apple-touch-icon" href="assets/icon-192.png">
 
     <!-- Core Pure CSS Design System -->
-    <link rel="stylesheet" href="css/styles.css?v=130">
+    <link rel="stylesheet" href="css/styles.css?v=132">
 
     <!-- Immediate Service Worker & Cache Invalidation Script -->
     <script>
       (function() {
-        var v = 'v130';
+        var v = 'v132';
         if (localStorage.getItem('pinPotha_active_build') !== v) {
           localStorage.setItem('pinPotha_active_build', v);
           try {
             localStorage.removeItem('pinPotha_posts');
             localStorage.removeItem('pinPotha_sandbox_posts');
             localStorage.removeItem('pinPotha_cached_community_members');
-            localStorage.removeItem('pinPotha_official_posts');
           } catch(e) {}
           if ('caches' in window) {
             caches.keys().then(function(keys) {
@@ -1743,7 +1742,25 @@
 
                 <div class="form-group">
                     <label class="form-label" id="editDescLabel">විස්තරය *</label>
-                    <textarea id="editPostDesc" class="form-textarea" rows="4" required maxlength="3000" placeholder="විස්තරය මෙහි සටහන් කරන්න..."></textarea>
+                    <textarea id="editPostDesc" class="form-textarea" rows="4" required maxlength="3000" placeholder="විස්තරය මෙහි සටහන කරන්න..."></textarea>
+                </div>
+
+                <!-- Master Admin Exclusive Controls inside Edit Modal -->
+                <div id="editAdminPostControls" class="admin-post-controls-box hidden" style="display: none; margin-bottom: 14px;">
+                    <div class="admin-controls-header">
+                        <i class="fa-solid fa-crown" style="color: #f59e0b;"></i>
+                        <span>පරිපාලක විශේෂ විකල්ප (Master Admin Options)</span>
+                    </div>
+                    <div class="admin-checkboxes-row">
+                        <label class="admin-checkbox-label">
+                            <input type="checkbox" id="editAdminIsOfficial">
+                            <span>📢 නිල නිවේදනයක් (Official Post) ලෙස සකසන්න</span>
+                        </label>
+                        <label class="admin-checkbox-label">
+                            <input type="checkbox" id="editAdminIsPinned">
+                            <span>📌 පවුරේ මුදුනටම Pin කරන්න (Pin to Top)</span>
+                        </label>
+                    </div>
                 </div>
 
                 <div style="display: flex; gap: 10px; margin-top: 16px;">
@@ -3423,6 +3440,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <!-- Application ES Modules -->
-    <script type="module" src="js/app.js?v=130"></script>
+    <script type="module" src="js/app.js?v=132"></script>
 </body>
 </html>

@@ -1281,6 +1281,43 @@
 
         <!-- ================= TAB 4: SYSTEM SETTINGS (MASTER ADMIN ONLY) ================= -->
         <section id="sectionSettings" class="admin-section">
+            <!-- Direct Wall Official Post Composer -->
+            <div class="glass-panel" style="border: 1px solid rgba(245, 158, 11, 0.35); background: linear-gradient(145deg, rgba(30, 41, 59, 0.7), rgba(245, 158, 11, 0.05)); margin-bottom: 24px;">
+                <div class="panel-header">
+                    <div class="panel-title" style="color: var(--gold-light);">
+                        <i class="fa-solid fa-bullhorn"></i>
+                        <span>පවුරට නව නිල නිවේදනයක් පළ කරන්න (Publish Official Post to Wall)</span>
+                    </div>
+                </div>
+                <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 14px;">
+                    මෙහි පළ කරන නිවේදනය "අපේ පිං පොත" නමින් නිල ලාංඡනය සහිතව ප්‍රධාන පවුරේ (Merit Wall Feed) සියලු පරිශීලකයින්ට දිස්වේ.
+                </p>
+                <form id="officialPostForm" onsubmit="publishOfficialFeedPost(event)">
+                    <div class="admin-form-group">
+                        <label class="admin-form-label">නිවේදන මාතෘකාව (Title)</label>
+                        <input type="text" id="officialPostTitle" class="admin-form-input" placeholder="උදා: පිං පොත නිල නිවේදනය" value="පිං පොත නිල නිවේදනය">
+                    </div>
+                    <div class="admin-form-group">
+                        <label class="admin-form-label">විස්තරය (Description) *</label>
+                        <textarea id="officialPostDesc" class="admin-form-textarea" rows="4" required placeholder="නිල නිවේදනයේ සම්පූර්ණ විස්තරය මෙහි ලියන්න..."></textarea>
+                    </div>
+                    <div class="admin-form-group">
+                        <label class="admin-form-label">ඡායාරූප සබැඳිය / URL (Image URL - Optional)</label>
+                        <input type="url" id="officialPostImage" class="admin-form-input" placeholder="https://example.com/banner.webp (හෝ හිස්ව තබන්න)">
+                    </div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 12px; margin-bottom: 6px; flex-wrap: wrap; gap: 10px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.85rem; color: #fff;">
+                            <input type="checkbox" id="officialPostPinned" style="accent-color: var(--gold-light); width: 18px; height: 18px;">
+                            <span>📌 පවුරේ මුදුනට Pin කරන්න (Pin to Top)</span>
+                        </label>
+                        <button type="submit" class="btn-save-settings" id="officialPostSubmitBtn" style="background: linear-gradient(135deg, #d97706, #b45309); font-weight: 700;">
+                            <i class="fa-solid fa-paper-plane"></i>
+                            <span>පවුරට පළ කරන්න</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
             <div class="glass-panel">
                 <div class="panel-header">
                     <div class="panel-title">
@@ -1384,6 +1421,6 @@
     </div>
 
     <!-- ES Module Script for Admin Logic -->
-    <script type="module" src="js/admin.js?v=82"></script>
+    <script type="module" src="js/admin.js?v=83"></script>
 </body>
 </html>

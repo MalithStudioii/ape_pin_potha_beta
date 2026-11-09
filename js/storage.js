@@ -5,9 +5,9 @@
  */
 
 import { firebaseConfig, isFirebaseConfigured, COLLECTIONS } from './firebase-config.js?v=22';
-import { Security } from './security.js?v=130';
+import { Security } from './security.js?v=131';
 import { INITIAL_ARANYA_LIST, SRI_LANKA_DISTRICTS } from './aranya-data.js';
-import { SEED_POSTS } from './initial-seed.js?v=130';
+import { SEED_POSTS } from './initial-seed.js?v=131';
 
 let db = null;
 let auth = null;
@@ -43,7 +43,7 @@ const SEED_NOTIFICATIONS = [];
 
 export const StorageService = {
   _cachedPosts: null,
-  FEED_PAGE_SIZE: 20,
+  FEED_PAGE_SIZE: 100,
   _lastVisibleDoc: null,
   _hasMorePosts: true,
   _isLoadingMore: false,
@@ -176,31 +176,23 @@ export const StorageService = {
 
   isOfficialPost(post) {
     if (!post) return false;
+    const author = (post.author || '').trim();
+    const title = (post.title || '').trim();
+    const authorRole = (post.authorRole || '').trim().toLowerCase();
     return post.isOfficial === true ||
            post.isOfficial === 'true' ||
-           post.authorRole === 'official' ||
-           (post.author && post.author.trim() === 'අපේ පිං පොත') ||
-           (post.title && post.title.trim() === 'පිං පොත නිල නිවේදනය') ||
+           authorRole === 'official' ||
+           author === 'අපේ පිං පොත' ||
+           author === 'අපේ පින් පොත' ||
+           title === 'පිං පොත නිල නිවේදනය' ||
+           title === 'පින් පොත නිල නිවේදනය' ||
+           title.includes('නිල නිවේදන') ||
            post.id === 'ovCufhPElI49tLz0MVDV' ||
            post.id === 'MtzAbfpxlg3odWmXHuEO' ||
            post.id === 'tEWldtJVFPSL5LsxtFlE';
   },
 
   getOfficialPosts() {
-    if (Array.isArray(this._cachedOfficialPosts) && this._cachedOfficialPosts.length > 0) {
-      return this._cachedOfficialPosts;
-    }
-    try {
-      const raw = localStorage.getItem('pinPotha_official_posts');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          this._cachedOfficialPosts = parsed;
-          return parsed;
-        }
-      }
-    } catch (e) {}
-
     // Permanent, instant zero-latency default official announcements (always available offline/cold-start)
     const defaults = [
       {
@@ -276,15 +268,56 @@ export const StorageService = {
         visibility: "public"
       }
     ];
-    this._cachedOfficialPosts = defaults;
-    return defaults;
+
+    const map = new Map();
+    defaults.forEach(d => map.set(d.id, d));
+
+    // Merge in-memory cached official posts
+    if (Array.isArray(this._cachedOfficialPosts) && this._cachedOfficialPosts.length > 0) {
+      this._cachedOfficialPosts.forEach(p => {
+        if (p && p.id) {
+          const ex = map.get(p.id) || {};
+          map.set(p.id, { ...ex, ...p, isOfficial: true });
+        }
+      });
+    }
+
+    // Merge local storage persistent official posts
+    try {
+      const raw = localStorage.getItem('pinPotha_official_posts');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          parsed.forEach(p => {
+            if (p && p.id) {
+              const ex = map.get(p.id) || {};
+              map.set(p.id, { ...ex, ...p, isOfficial: true });
+            }
+          });
+        }
+      }
+    } catch (e) {}
+
+    const merged = Array.from(map.values());
+    this._cachedOfficialPosts = merged;
+    return merged;
   },
 
   cacheOfficialPosts(officialPosts) {
     if (!Array.isArray(officialPosts) || officialPosts.length === 0) return;
-    this._cachedOfficialPosts = officialPosts;
+    const current = this.getOfficialPosts();
+    const map = new Map();
+    current.forEach(p => { if (p && p.id) map.set(p.id, p); });
+    officialPosts.forEach(p => {
+      if (p && p.id) {
+        const ex = map.get(p.id) || {};
+        map.set(p.id, { ...ex, ...p, isOfficial: true });
+      }
+    });
+    const merged = Array.from(map.values());
+    this._cachedOfficialPosts = merged;
     try {
-      localStorage.setItem('pinPotha_official_posts', JSON.stringify(officialPosts));
+      localStorage.setItem('pinPotha_official_posts', JSON.stringify(merged));
     } catch (e) {}
   },
 
@@ -877,7 +910,7 @@ export const StorageService = {
           const officialQ = query(
             collection(db, COLLECTIONS.POSTS),
             where("isOfficial", "==", true),
-            limit(10)
+            limit(50)
           );
           onSnapshot(officialQ, (officialSnap) => {
             const offPosts = [];
@@ -1133,7 +1166,7 @@ export const StorageService = {
       const rawOfficial = localStorage.getItem('pinPotha_official_posts');
       let combined = [];
 
-      // Guarantee official announcements are always present in initial feed
+      // 1. Guarantee official announcements are always present in initial feed
       const offPosts = this.getOfficialPosts();
       if (Array.isArray(offPosts)) combined.push(...offPosts);
 
@@ -1143,16 +1176,18 @@ export const StorageService = {
           if (Array.isArray(offList)) combined.push(...offList);
         } catch (e) {}
       }
+
+      // 2. Base community seeds (all 71 genuine Firestore community posts)
+      if (typeof SEED_POSTS !== 'undefined' && Array.isArray(SEED_POSTS) && SEED_POSTS.length > 0) {
+        combined.push(...SEED_POSTS);
+      }
+
+      // 3. Merged local storage cache (updated posts & fresh additions)
       if (rawPosts) {
         try {
           const list = JSON.parse(rawPosts);
           if (Array.isArray(list) && list.length > 0) combined.push(...list);
-          else if (typeof SEED_POSTS !== 'undefined' && Array.isArray(SEED_POSTS)) combined.push(...SEED_POSTS);
-        } catch (e) {
-          if (typeof SEED_POSTS !== 'undefined' && Array.isArray(SEED_POSTS)) combined.push(...SEED_POSTS);
-        }
-      } else if (typeof SEED_POSTS !== 'undefined' && Array.isArray(SEED_POSTS) && SEED_POSTS.length > 0) {
-        combined.push(...SEED_POSTS);
+        } catch (e) {}
       }
 
       const map = new Map();
@@ -1192,21 +1227,21 @@ export const StorageService = {
     this._loadedPosts = cleanPosts;
 
     try {
-      // Store top 25 posts in single localStorage key so initial paint is instantaneous without quota exhaustion
-      const topCache = cleanPosts.slice(0, 25);
+      // Store all active posts (up to 100) in single localStorage key so initial paint is instantaneous without quota exhaustion
+      const topCache = cleanPosts.slice(0, 100);
       localStorage.setItem('pinPotha_posts', JSON.stringify(topCache));
       localStorage.removeItem('pinPotha_sandbox_posts');
     } catch (e) {
-      console.warn('[Storage] LocalStorage quota reached, storing lightweight top-10 cache:', e);
+      console.warn('[Storage] LocalStorage quota reached, storing lightweight top-50 cache:', e);
       try {
-        const top10 = cleanPosts.slice(0, 10);
-        localStorage.setItem('pinPotha_posts', JSON.stringify(top10));
+        const top50 = cleanPosts.slice(0, 50);
+        localStorage.setItem('pinPotha_posts', JSON.stringify(top50));
         localStorage.removeItem('pinPotha_sandbox_posts');
       } catch (err2) {
-        console.warn('[Storage] Fallback top 10 also failed, storing top 4 posts:', err2);
+        console.warn('[Storage] Fallback top 50 also failed, storing top 20 posts:', err2);
         try {
-          const top4 = cleanPosts.slice(0, 4);
-          localStorage.setItem('pinPotha_posts', JSON.stringify(top4));
+          const top20 = cleanPosts.slice(0, 20);
+          localStorage.setItem('pinPotha_posts', JSON.stringify(top20));
           localStorage.removeItem('pinPotha_sandbox_posts');
         } catch (err3) {}
       }
@@ -1368,7 +1403,7 @@ export const StorageService = {
     return postObj;
   },
 
-  async fetchPostsViaREST(limitCount = 20, startAfterTimestamp = null) {
+  async fetchPostsViaREST(limitCount = 100, startAfterTimestamp = null) {
     try {
       const url = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents:runQuery?key=${firebaseConfig.apiKey}`;
       const queryPayload = {
@@ -1419,7 +1454,7 @@ export const StorageService = {
               value: { booleanValue: true }
             }
           },
-          limit: 10
+          limit: 50
         }
       };
       const response = await fetch(url, {
@@ -2277,14 +2312,17 @@ export const StorageService = {
   async createPost(rawPost) {
     // 0. Auto-default title and institutional naming for official posts & general posts
     const postToProcess = { ...rawPost };
-    const isMaster = this.isMasterAdmin();
-    const isOfficial = isMaster && !!postToProcess.isOfficial;
+    const isMaster = this.isMasterAdmin() || this.isMasterAdmin(this.currentUser) || this.isMasterAdmin(rawPost?.authorEmail) || this.isMasterAdmin(rawPost?.uid);
+    const isOfficial = (isMaster && !!postToProcess.isOfficial) || postToProcess.authorRole === 'official' || postToProcess.author === 'අපේ පිං පොත' || postToProcess.author === 'අපේ පින් පොත';
 
     let safeTitle = (postToProcess.title || '').trim();
     if (isOfficial && (!safeTitle || safeTitle.length < 3)) {
       safeTitle = 'පිං පොත නිල නිවේදනය';
     }
     postToProcess.title = safeTitle;
+    postToProcess.type = postToProcess.type || 'general';
+    postToProcess.category = postToProcess.category || (postToProcess.type === 'general' ? 'සාමාන්‍ය' : 'දානමය');
+    postToProcess.visibility = postToProcess.visibility || 'public';
 
     // 1. Strict Security Validation & Sanitization with Banned Words Filter
     const bannedConfig = this.getBannedWords();
@@ -2301,11 +2339,11 @@ export const StorageService = {
     }
 
     const cleanData = validation.sanitized;
-    const authorName = isOfficial ? 'අපේ පිං පොත' : this.currentUser.name;
-    const authorPhoto = isOfficial ? null : (this.currentUser.photo || null);
+    const authorName = isOfficial ? 'අපේ පිං පොත' : (this.currentUser?.name || 'කල්‍යාණ මිත්‍ර');
+    const authorPhoto = isOfficial ? null : (this.currentUser?.photo || null);
 
     const postPayload = {
-      uid: this.currentUser.uid,
+      uid: this.currentUser?.uid || 'user_guest',
       author: authorName,
       authorPhoto: authorPhoto,
       type: cleanData.type,
@@ -2326,7 +2364,7 @@ export const StorageService = {
       isPinned: isMaster && !!cleanData.isPinned,
       isVerifiedNeed: isMaster && !!cleanData.isVerifiedNeed,
       authorRole: isOfficial ? 'official' : (isMaster ? 'admin' : 'member'),
-      authorEmail: isOfficial ? null : (this.currentUser.email || null),
+      authorEmail: isOfficial ? null : (this.currentUser?.email || null),
       timestamp: Date.now(),
       date: "දැන්",
       sadhuCount: 0,
@@ -2336,25 +2374,42 @@ export const StorageService = {
       repostCount: 0
     };
 
-    if (isCloudReady && db) {
-      const { collection, addDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js');
-      await addDoc(collection(db, COLLECTIONS.POSTS), {
-        ...postPayload,
-        serverCreatedAt: serverTimestamp()
-      });
-      return true;
+    // Resilient Optimistic Insertion: ensure immediate feedback in UI and persistent storage
+    const localPostId = "post_" + Date.now() + "_" + Math.random().toString(36).substr(2, 6);
+    const newPost = {
+      id: localPostId,
+      ...postPayload
+    };
+
+    if (isOfficial) {
+      this.cacheOfficialPosts([newPost]);
     }
 
-    // Local Sandbox Mode
-    const posts = this.getLocalPosts();
-    const newPost = {
-      id: "post_" + Date.now(),
-      ...postPayload,
-      repostCount: 0
-    };
-    posts.unshift(newPost);
-    this.cacheLocal(posts);
-    this.notifyListeners(posts);
+    const currentLoaded = Array.isArray(this._loadedPosts) ? this._loadedPosts : (this.getLocalPosts() || []);
+    this._loadedPosts = [newPost, ...currentLoaded.filter(p => p.id !== localPostId)];
+    this._cachedPosts = this._loadedPosts;
+    this.cacheLocal(this._loadedPosts);
+    this.notifyListeners(this._loadedPosts);
+
+    if (isCloudReady && db) {
+      try {
+        const { collection, addDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js');
+        const docRef = await addDoc(collection(db, COLLECTIONS.POSTS), {
+          ...postPayload,
+          serverCreatedAt: serverTimestamp()
+        });
+        if (docRef && docRef.id) {
+          newPost.id = docRef.id;
+          if (isOfficial) {
+            this.cacheOfficialPosts([newPost]);
+          }
+          this.cacheLocal(this._loadedPosts);
+        }
+      } catch (cloudErr) {
+        console.warn('[Storage] Cloud createPost warning (post kept in local cache):', cloudErr);
+      }
+    }
+
     return true;
   },
 
@@ -2755,7 +2810,7 @@ export const StorageService = {
   /**
    * Update post content (Guarded by author or master admin)
    */
-  async updatePost(postId, { title, category, visibility, location, description, contact }) {
+  async updatePost(postId, { title, category, visibility, location, description, contact, isOfficial, isPinned }) {
     let allPosts = this.getLocalPosts();
     let targetPost = allPosts.find(p => p.id === postId);
     if (!targetPost && this._cachedPosts) {
@@ -2763,6 +2818,16 @@ export const StorageService = {
       if (targetPost) {
         allPosts = this._cachedPosts;
       }
+    }
+    if (!targetPost && this._loadedPosts) {
+      targetPost = this._loadedPosts.find(p => p.id === postId);
+      if (targetPost) {
+        allPosts = this._loadedPosts;
+      }
+    }
+    if (!targetPost) {
+      const offList = this.getOfficialPosts();
+      targetPost = offList.find(p => p.id === postId);
     }
     if (!targetPost) {
       throw new Error('පුණ්‍ය සටහන සොයාගත නොහැකි විය.');
@@ -2782,6 +2847,22 @@ export const StorageService = {
     if (location !== undefined) targetPost.location = location;
     if (description !== undefined) targetPost.description = description;
     if (contact !== undefined) targetPost.contact = contact;
+
+    if (isMaster) {
+      if (isOfficial !== undefined) {
+        targetPost.isOfficial = Boolean(isOfficial);
+        if (targetPost.isOfficial) {
+          targetPost.author = 'අපේ පිං පොත';
+          targetPost.authorRole = 'official';
+          targetPost.authorPhoto = null;
+          this.cacheOfficialPosts([targetPost]);
+        }
+      }
+      if (isPinned !== undefined) {
+        targetPost.isPinned = Boolean(isPinned);
+      }
+    }
+
     targetPost.isEdited = true;
     targetPost.editedAt = Date.now();
 
@@ -2803,6 +2884,17 @@ export const StorageService = {
         if (location !== undefined) updateData.location = location;
         if (description !== undefined) updateData.description = description;
         if (contact !== undefined) updateData.contact = contact;
+        if (isMaster && isOfficial !== undefined) {
+          updateData.isOfficial = Boolean(isOfficial);
+          if (updateData.isOfficial) {
+            updateData.author = 'අපේ පිං පොත';
+            updateData.authorRole = 'official';
+            updateData.authorPhoto = null;
+          }
+        }
+        if (isMaster && isPinned !== undefined) {
+          updateData.isPinned = Boolean(isPinned);
+        }
 
         await updateDoc(postRef, updateData);
       } catch (err) {
@@ -2811,6 +2903,72 @@ export const StorageService = {
     }
 
     return targetPost;
+  },
+
+  /**
+   * Master Admin: Toggle Official status of any post
+   */
+  async toggleOfficialPost(postId, makeOfficial = null) {
+    if (!this.isMasterAdmin()) {
+      throw new Error("මෙම ක්‍රියාව සිදුකිරීමට Master Admin අවසර අවශ්‍යයි.");
+    }
+    let allPosts = this._loadedPosts || this.getLocalPosts() || [];
+    let target = allPosts.find(p => p.id === postId);
+    if (!target && this._cachedPosts) {
+      target = this._cachedPosts.find(p => p.id === postId);
+    }
+    if (!target) {
+      const offList = this.getOfficialPosts();
+      target = offList.find(p => p.id === postId);
+    }
+    if (!target) {
+      throw new Error("පුණ්‍ය සටහන සොයාගත නොහැකි විය.");
+    }
+
+    const currentOfficial = this.isOfficialPost(target);
+    const newOfficial = makeOfficial !== null ? Boolean(makeOfficial) : !currentOfficial;
+
+    target.isOfficial = newOfficial;
+    if (newOfficial) {
+      target.author = 'අපේ පිං පොත';
+      target.authorRole = 'official';
+      target.authorPhoto = null;
+      this.cacheOfficialPosts([target]);
+    } else {
+      if (Array.isArray(this._cachedOfficialPosts)) {
+        this._cachedOfficialPosts = this._cachedOfficialPosts.filter(p => p.id !== postId);
+        try {
+          localStorage.setItem('pinPotha_official_posts', JSON.stringify(this._cachedOfficialPosts));
+        } catch (e) {}
+      }
+    }
+    target.isEdited = true;
+    target.editedAt = Date.now();
+
+    this._cachedPosts = allPosts;
+    this.cacheLocal(allPosts);
+    this.notifyListeners(allPosts);
+
+    if (isCloudReady && db) {
+      try {
+        const { doc, updateDoc } = await import('https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js');
+        const updatePayload = {
+          isOfficial: newOfficial,
+          isEdited: true,
+          editedAt: Date.now()
+        };
+        if (newOfficial) {
+          updatePayload.author = 'අපේ පිං පොත';
+          updatePayload.authorRole = 'official';
+          updatePayload.authorPhoto = null;
+        }
+        await updateDoc(doc(db, COLLECTIONS.POSTS, postId), updatePayload);
+      } catch (err) {
+        console.warn('[Storage] Firestore toggleOfficialPost error:', err);
+      }
+    }
+
+    return target;
   },
 
   /**

@@ -4,12 +4,14 @@
  * ============================================================================
  */
 
-import { StorageService } from './storage.js?v=130';
-import { Security } from './security.js?v=130';
+import { StorageService } from './storage.js?v=131';
+import { Security } from './security.js?v=131';
 import { uploadToImgBB } from './imgbb-service.js?v=66';
 import { SoundService, triggerHaptic } from './sound.js?v=66';
-import { FeedAlgorithm } from './algorithm.js?v=130';
+import { FeedAlgorithm } from './algorithm.js?v=132';
 let allCommunityMembersCache = [];
+let infiniteScrollObserver = null;
+let isTriggeringLoadMore = false;
 
 /* ==========================================================================
    Sri Lanka Provinces & Districts Dataset & Dropdown Helper Functions
@@ -1925,6 +1927,9 @@ export function renderPostCardHTML(post, user) {
           </div>
           <div style="display: flex; align-items: center; gap: 6px;">
             ${isMaster ? `
+              <button class="post-official-btn ${post.isOfficial ? 'is-official' : ''}" onclick="toggleOfficialPrompt('${post.id}')" title="${post.isOfficial ? 'නිල නිවේදන ලාංඡනය ඉවත් කරන්න' : 'නිල නිවේදනයක් (Official Post) බවට පත් කරන්න'}">
+                <i class="fa-solid fa-bullhorn"></i>
+              </button>
               <button class="post-pin-btn ${post.isPinned ? 'is-pinned' : ''}" onclick="togglePinPrompt('${post.id}')" title="${post.isPinned ? 'Pin ඉවත් කරන්න' : 'මුදුනටම Pin කරන්න'}">
                 <i class="fa-solid fa-thumbtack"></i>
               </button>
@@ -2030,6 +2035,9 @@ export function renderPostCardHTML(post, user) {
               </button>
             ` : ''}
             ${isMaster ? `
+              <button class="post-official-btn ${post.isOfficial ? 'is-official' : ''}" onclick="toggleOfficialPrompt('${post.id}')" title="${post.isOfficial ? 'නිල නිවේදන ලාංඡනය ඉවත් කරන්න' : 'නිල නිවේදනයක් (Official Post) බවට පත් කරන්න'}">
+                <i class="fa-solid fa-bullhorn"></i>
+              </button>
               <button class="post-pin-btn ${post.isPinned ? 'is-pinned' : ''}" onclick="togglePinPrompt('${post.id}')" title="${post.isPinned ? 'Pin ඉවත් කරන්න' : 'මුදුනටම Pin කරන්න'}">
                 <i class="fa-solid fa-thumbtack"></i>
               </button>
@@ -2410,8 +2418,6 @@ function renderFeed() {
 // ============================================================================
 // High-Scale Feed Pagination & Infinite Scroll Engine (Limit: 20)
 // ============================================================================
-let infiniteScrollObserver = null;
-let isTriggeringLoadMore = false;
 
 export function setupInfiniteScrollObserver() {
   if (infiniteScrollObserver) {
@@ -3127,6 +3133,24 @@ window.openEditPostModal = function(postId) {
     if (contactWrap) contactWrap.style.display = 'none';
   }
 
+  // Master Admin Controls inside Edit Modal
+  const editAdminControls = document.getElementById('editAdminPostControls');
+  const editOfficialChk = document.getElementById('editAdminIsOfficial');
+  const editPinnedChk = document.getElementById('editAdminIsPinned');
+  if (editAdminControls) {
+    if (isMaster) {
+      editAdminControls.style.display = 'block';
+      editAdminControls.classList.remove('hidden');
+      if (editOfficialChk) editOfficialChk.checked = Boolean(StorageService.isOfficialPost(post));
+      if (editPinnedChk) editPinnedChk.checked = Boolean(post.isPinned);
+    } else {
+      editAdminControls.style.display = 'none';
+      editAdminControls.classList.add('hidden');
+      if (editOfficialChk) editOfficialChk.checked = false;
+      if (editPinnedChk) editPinnedChk.checked = false;
+    }
+  }
+
   modal.classList.remove('hidden');
 };
 
@@ -3148,6 +3172,7 @@ window.handleEditPostSubmit = async function(event) {
   const description = (document.getElementById('editPostDesc')?.value || '').trim();
   const contact = (document.getElementById('editPostContact')?.value || '').trim();
 
+  const isMaster = StorageService.isMasterAdmin();
   const submitBtn = document.getElementById('editPostSubmitBtn');
   const origBtnText = submitBtn ? submitBtn.innerHTML : '';
 
@@ -3157,14 +3182,22 @@ window.handleEditPostSubmit = async function(event) {
       submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> සුරකිමින්...';
     }
 
-    await StorageService.updatePost(postId, {
+    const updatePayload = {
       title,
       category,
       visibility,
       location,
       description,
       contact
-    });
+    };
+    if (isMaster) {
+      const editOfficialChk = document.getElementById('editAdminIsOfficial');
+      const editPinnedChk = document.getElementById('editAdminIsPinned');
+      if (editOfficialChk) updatePayload.isOfficial = editOfficialChk.checked;
+      if (editPinnedChk) updatePayload.isPinned = editPinnedChk.checked;
+    }
+
+    await StorageService.updatePost(postId, updatePayload);
 
     SoundService.playPublish?.();
     triggerHaptic([25, 40]);
@@ -3177,6 +3210,36 @@ window.handleEditPostSubmit = async function(event) {
       submitBtn.disabled = false;
       submitBtn.innerHTML = origBtnText;
     }
+  }
+};
+
+window.toggleOfficialPrompt = async function(postId) {
+  if (!StorageService.isMasterAdmin()) {
+    alert("මෙම ක්‍රියාව සිදුකිරීමට Master Admin අවසර අවශ්‍යයි.");
+    return;
+  }
+  const allPosts = StorageService.getLocalPosts() || [];
+  let post = allPosts.find(p => p.id === postId) || (typeof currentPostsData !== 'undefined' && currentPostsData.find(p => p.id === postId));
+  if (!post) {
+    const off = StorageService.getOfficialPosts();
+    post = off.find(p => p.id === postId);
+  }
+  const isCurrentlyOfficial = post ? StorageService.isOfficialPost(post) : false;
+  const actionText = isCurrentlyOfficial ? 
+    "මෙම සටහනේ 'නිල නිවේදන (Official)' තත්වය ඉවත් කිරීමට ඔබට අවශ්‍යද?" : 
+    "මෙම සටහන 'අපේ පිං පොත නිල නිවේදනයක් (Official Post)' බවට පත් කිරීමට ඔබට අවශ්‍යද?";
+
+  if (!confirm(actionText)) return;
+
+  try {
+    await StorageService.toggleOfficialPost(postId, !isCurrentlyOfficial);
+    SoundService.playPublish?.();
+    renderFeed();
+    if (typeof showToastNotification === 'function') {
+      showToastNotification(isCurrentlyOfficial ? "නිල නිවේදන තත්වය ඉවත් කෙරිණි." : "නිල නිවේදනයක් ලෙස සාර්ථකව පත් කෙරිණි! 📢");
+    }
+  } catch (err) {
+    alert("දෝෂයකි: " + err.message);
   }
 };
 
@@ -8503,11 +8566,14 @@ function renderGlobalAnnouncementUI(announcement) {
   const text = announcement?.text || announcement?.message || '';
   if (announcement && announcement.active && text.trim()) {
     banner.innerHTML = `
-      <div class="global-announcement-content">
-        <i class="fa-solid fa-bullhorn" style="font-size: 0.95rem; color: #b45309; animation: pulse 2s infinite;"></i>
-        <div class="global-announcement-marquee">
-          <span>${Security.escapeHTML(text)}</span>
+      <div class="global-announcement-content" style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+        <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0;">
+          <i class="fa-solid fa-bullhorn" style="font-size: 0.95rem; color: #b45309; animation: pulse 2s infinite; flex-shrink: 0;"></i>
+          <div class="global-announcement-marquee" style="flex: 1; min-width: 0;">
+            <span>${Security.escapeHTML(text)}</span>
+          </div>
         </div>
+        <button type="button" onclick="dismissGlobalAnnouncement()" title="වසන්න" style="background: none; border: none; font-size: 1.15rem; color: #92400e; cursor: pointer; padding: 0 4px; line-height: 1; flex-shrink: 0;">&times;</button>
       </div>
     `;
     banner.classList.remove('hidden');
@@ -8517,6 +8583,14 @@ function renderGlobalAnnouncementUI(announcement) {
     banner.style.display = 'none';
   }
 }
+
+window.dismissGlobalAnnouncement = function() {
+  const banner = document.getElementById('globalAnnouncementBanner');
+  if (banner) {
+    banner.classList.add('hidden');
+    banner.style.display = 'none';
+  }
+};
 
 function renderDailyVerseUI(verse) {
   if (!verse) return;
@@ -9155,7 +9229,7 @@ function initPWAEngine() {
   const isIos = (typeof window !== 'undefined' && window.navigator && /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase())) && !window.MSStream;
 
   // Purge any stale caches from previous builds
-  const ACTIVE_BUILD = 'v130';
+  const ACTIVE_BUILD = 'v131';
   if (localStorage.getItem('pinPotha_active_build') !== ACTIVE_BUILD) {
     localStorage.setItem('pinPotha_active_build', ACTIVE_BUILD);
     if ('caches' in window) {
@@ -9172,7 +9246,7 @@ function initPWAEngine() {
   // Register Service Worker safely
   if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
     const registerSW = () => {
-      navigator.serviceWorker.register('./sw.js?v=130', { updateViaCache: 'none' });
+      navigator.serviceWorker.register('./sw.js?v=131', { updateViaCache: 'none' });
     };
     if (document.readyState === 'complete') {
       registerSW();
@@ -9180,7 +9254,7 @@ function initPWAEngine() {
       window.addEventListener('load', registerSW);
     }
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js?v=130', { updateViaCache: 'none' })
+      navigator.serviceWorker.register('./sw.js?v=131', { updateViaCache: 'none' })
         .then((registration) => {
           // Immediately check for service worker updates
           try { registration.update(); } catch (e) {}

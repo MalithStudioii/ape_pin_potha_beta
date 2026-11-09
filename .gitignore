@@ -28,6 +28,10 @@ yarn-error.log*
 # Node dependencies (if initialized in future)
 node_modules/
 package-lock.json
+package.json
+test_sim.mjs
+*.docx
+*.pdf
 
 # Agent temporary media storage
 .tempmediaStorage/

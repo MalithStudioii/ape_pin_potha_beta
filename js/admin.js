@@ -11,6 +11,23 @@ import { firebaseConfig, isFirebaseConfigured, COLLECTIONS } from './firebase-co
 import { Security } from './security.js?v=48';
 
 const MASTER_ADMIN_EMAIL = "silvadilan9@gmail.com";
+const MASTER_ADMIN_EMAILS = [
+    "silvadilan9@gmail.com",
+    "creativeparadise25@gmail.com"
+];
+
+function checkIsMasterAdmin(emailOrUser) {
+    if (!emailOrUser) return false;
+    if (typeof emailOrUser === 'string') {
+        const clean = emailOrUser.trim().toLowerCase();
+        return MASTER_ADMIN_EMAILS.some(adm => adm.toLowerCase() === clean);
+    }
+    const email = (emailOrUser.email || '').trim().toLowerCase();
+    const uid = emailOrUser.uid || '';
+    return MASTER_ADMIN_EMAILS.some(adm => adm.toLowerCase() === email) ||
+           uid === 'user_malith' ||
+           uid === 'o2pWiAX7SXTHiMfSiphI8Ln5HAM2';
+}
 
 let app = null;
 let db = null;
@@ -74,7 +91,7 @@ async function initAdminPortal() {
 
             // Verify Admin Roles
             const email = (user.email || '').trim().toLowerCase();
-            isMasterAdmin = (email === MASTER_ADMIN_EMAIL.toLowerCase());
+            isMasterAdmin = checkIsMasterAdmin(user);
 
             let userDocRole = 'member';
             let isUserBanned = false;
@@ -287,7 +304,7 @@ function updateUserMetrics(users) {
     let bannedCount = 0;
 
     users.forEach(u => {
-        const isMaster = (u.email && u.email.toLowerCase() === MASTER_ADMIN_EMAIL.toLowerCase());
+        const isMaster = checkIsMasterAdmin(u.email);
         if (isMaster || u.role === 'admin' || u.role === 'master_admin') adminsCount++;
         if (u.isBanned) bannedCount++;
     });
@@ -329,7 +346,7 @@ function renderUsersTable(usersToRender) {
 
     tbody.innerHTML = usersToRender.map(u => {
         const email = u.email || 'නැත';
-        const isMaster = (email.toLowerCase() === MASTER_ADMIN_EMAIL.toLowerCase());
+        const isMaster = checkIsMasterAdmin(email);
         const isCurrentAdmin = (u.role === 'admin' || isMaster);
         const isBanned = !!u.isBanned;
 
@@ -451,7 +468,7 @@ window.filterUsersTable = function() {
         const matchesSearch = !searchVal || nameMatch || emailMatch;
 
         let matchesRole = true;
-        const isMaster = (u.email && u.email.toLowerCase() === MASTER_ADMIN_EMAIL.toLowerCase());
+        const isMaster = checkIsMasterAdmin(u.email);
         const isSangha = u.isSangha === true || u.role === 'sangha' || (u.authorRole === 'sangha') || (u.name && (u.name.includes('ස්වාමීන් වහන්සේ') || u.name.includes('හිමි') || u.name.includes('තෙරුන්') || u.name.startsWith('පූජ්‍ය ') || u.name.startsWith('පූජ්‍යපාද ')));
 
         if (roleVal === 'master') {
@@ -592,7 +609,7 @@ window.toggleUserBan = async function(uid, shouldBan) {
     const user = allUsersList.find(u => u.uid === uid);
     if (!user) return;
 
-    if (user.email && user.email.toLowerCase() === MASTER_ADMIN_EMAIL.toLowerCase()) {
+    if (user.email && checkIsMasterAdmin(user.email)) {
         alert('Master Admin ව Ban කළ නොහැක.');
         return;
     }
@@ -651,6 +668,7 @@ function renderModerationFeed(postsToRender) {
         const author = post.author || 'කල්‍යාණ මිත්‍ර';
         const dateStr = post.date || (post.timestamp ? new Date(post.timestamp).toLocaleString('si-LK') : 'අද');
         const img = post.image || (post.images && post.images[0]) || null;
+        const isOfficial = Boolean(post.isOfficial || post.authorRole === 'official' || post.author === 'අපේ පිං පොත' || post.author === 'අපේ පින් පොත');
 
         // Scan for restricted keywords
         const combinedText = `${title} ${desc}`.toLowerCase();
@@ -658,14 +676,17 @@ function renderModerationFeed(postsToRender) {
         const hasWarning = foundBadWords.length > 0;
 
         return `
-            <div class="mod-card ${hasWarning ? 'has-warning' : ''}" id="mod-card-${post.id}">
+            <div class="mod-card ${hasWarning ? 'has-warning' : ''}" id="mod-card-${post.id}" style="${isOfficial ? 'border: 1px solid var(--gold-light); background: rgba(245, 158, 11, 0.05);' : ''}">
                 <div class="mod-card-header">
                     <div class="mod-author-info">
-                        <div class="table-avatar" style="width: 32px; height: 32px; font-size: 0.8rem;">
-                            ${author.charAt(0)}
+                        <div class="table-avatar" style="width: 32px; height: 32px; font-size: 0.8rem; ${isOfficial ? 'background: linear-gradient(135deg, #d97706, #b45309); color: #fff;' : ''}">
+                            ${isOfficial ? '<i class="fa-solid fa-dharmachakra"></i>' : author.charAt(0)}
                         </div>
                         <div>
-                            <div class="mod-author-name">${Security.escapeHTML(author)}</div>
+                            <div class="mod-author-name" style="display: flex; align-items: center; gap: 6px;">
+                                <span>${Security.escapeHTML(isOfficial ? 'අපේ පිං පොත' : author)}</span>
+                                ${isOfficial ? '<span style="font-size: 0.65rem; background: var(--gold-light); color: #78350f; padding: 1px 6px; border-radius: 4px; font-weight: 700;"><i class="fa-solid fa-bullhorn"></i> නිල නිවේදනය</span>' : ''}
+                            </div>
                             <div class="mod-meta-date">📅 ${Security.escapeHTML(dateStr)} • ${Security.escapeHTML(post.category || 'සාමාන්‍ය')}</div>
                         </div>
                     </div>
@@ -691,10 +712,15 @@ function renderModerationFeed(postsToRender) {
                     <img src="${img}" class="mod-img-preview" alt="Post Attachment" loading="lazy">
                 ` : ''}
 
-                <div class="mod-card-actions">
-                    <a href="index.html?post=${encodeURIComponent(post.id)}" target="_blank" class="btn-table-action" style="text-decoration:none;">
-                        <i class="fa-solid fa-arrow-up-right-from-square"></i> බලන්න
-                    </a>
+                <div class="mod-card-actions" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
+                    <div style="display: flex; gap: 6px;">
+                        <a href="index.html?post=${encodeURIComponent(post.id)}" target="_blank" class="btn-table-action" style="text-decoration:none;">
+                            <i class="fa-solid fa-arrow-up-right-from-square"></i> බලන්න
+                        </a>
+                        <button class="btn-table-action" onclick="toggleOfficialPostByAdmin('${post.id}', ${isOfficial})" style="background: ${isOfficial ? 'rgba(245, 158, 11, 0.25)' : 'rgba(255,255,255,0.06)'}; color: ${isOfficial ? 'var(--gold-light)' : 'var(--text-secondary)'}; border: 1px solid ${isOfficial ? 'var(--gold-light)' : 'rgba(255,255,255,0.1)'};" title="${isOfficial ? 'නිල නිවේදන තත්වය ඉවත් කරන්න' : 'නිල නිවේදනයක් කරන්න'}">
+                            <i class="fa-solid fa-bullhorn"></i> ${isOfficial ? 'Official (ඉවත් කරන්න)' : 'Official කරන්න'}
+                        </button>
+                    </div>
 
                     <div style="display: flex; gap: 6px;">
                         <button class="btn-table-action btn-table-ban" onclick="deletePostByAdmin('${post.id}', '${post.uid}')" title="මෙම සටහන ඉවත් කරන්න">
@@ -711,6 +737,107 @@ function renderModerationFeed(postsToRender) {
         `;
     }).join('');
 }
+
+window.toggleOfficialPostByAdmin = async function(postId, currentStatus) {
+    if (!isMasterAdmin) {
+        alert('මෙම ක්‍රියාව සඳහා Master Admin බලතල අවශ්‍යයි.');
+        return;
+    }
+    const targetStatus = !currentStatus;
+    const msg = targetStatus ? 
+        'මෙම සටහන "අපේ පිං පොත නිල නිවේදනයක්" (Official Announcement) බවට පත් කිරීමට ඔබට අවශ්‍යද?' : 
+        'මෙම සටහනේ නිල නිවේදන තත්වය ඉවත් කිරීමට ඔබට අවශ්‍යද?';
+    if (!confirm(msg)) return;
+
+    try {
+        const { doc, updateDoc } = await import('https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js');
+        const updatePayload = {
+            isOfficial: targetStatus,
+            editedAt: Date.now()
+        };
+        if (targetStatus) {
+            updatePayload.author = 'අපේ පිං පොත';
+            updatePayload.authorRole = 'official';
+            updatePayload.authorPhoto = null;
+        }
+        await updateDoc(doc(db, COLLECTIONS.POSTS, postId), updatePayload);
+        await recordAuditLog(targetStatus ? 'Marked Post Official' : 'Unmarked Post Official', `Post ID ${postId} status changed to ${targetStatus}`);
+        alert('සාර්ථකව යාවත්කාලීන විය!');
+    } catch (err) {
+        alert('දෝෂයකි: ' + err.message);
+    }
+};
+
+window.publishOfficialFeedPost = async function(e) {
+    if (e) e.preventDefault();
+    if (!isMasterAdmin) {
+        alert('මෙම ක්‍රියාව සඳහා Master Admin බලතල අවශ්‍යයි.');
+        return;
+    }
+    const title = (document.getElementById('officialPostTitle')?.value || '').trim() || 'පිං පොත නිල නිවේදනය';
+    const desc = (document.getElementById('officialPostDesc')?.value || '').trim();
+    const imgUrl = (document.getElementById('officialPostImage')?.value || '').trim();
+    const isPinned = Boolean(document.getElementById('officialPostPinned')?.checked);
+
+    if (!desc) {
+        alert('කරුණාකර නිවේදන විස්තරය ඇතුළත් කරන්න.');
+        return;
+    }
+
+    const btn = document.getElementById('officialPostSubmitBtn');
+    const origText = btn ? btn.innerHTML : '';
+    try {
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> පළ කරමින්...';
+        }
+        const { collection, addDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js');
+        const payload = {
+            uid: currentAdminUser.uid,
+            author: 'අපේ පිං පොත',
+            authorRole: 'official',
+            authorPhoto: null,
+            authorEmail: currentAdminUser.email,
+            type: 'general',
+            visibility: 'public',
+            title: title,
+            category: 'සාමාන්‍ය',
+            location: '',
+            contact: '',
+            description: desc,
+            image: imgUrl || null,
+            images: imgUrl ? [imgUrl] : [],
+            videoUrl: null,
+            videoId: null,
+            videoType: null,
+            isShorts: false,
+            videoThumbnail: null,
+            isOfficial: true,
+            isPinned: isPinned,
+            timestamp: Date.now(),
+            date: "දැන්",
+            sadhuCount: 0,
+            sadhuUsers: [],
+            comments: [],
+            shareCount: 0,
+            repostCount: 0,
+            serverCreatedAt: serverTimestamp()
+        };
+
+        const docRef = await addDoc(collection(db, COLLECTIONS.POSTS), payload);
+        await recordAuditLog('Published Official Post', `Official Post "${title}" (ID: ${docRef.id}) published to merit wall`);
+
+        alert('📢 නිල නිවේදනය සාර්ථකව පවුරට පළ කරන ලදී!');
+        document.getElementById('officialPostForm')?.reset();
+    } catch (err) {
+        alert('දෝෂයකි: ' + err.message);
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = origText;
+        }
+    }
+};
 
 window.filterModerationFeed = function() {
     const searchVal = (document.getElementById('modSearchInput')?.value || '').toLowerCase().trim();

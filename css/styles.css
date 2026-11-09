@@ -1512,6 +1512,30 @@ body {
   background: #fffbeb;
 }
 
+.post-official-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+  font-size: 0.88rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.post-official-btn:hover {
+  color: #d97706;
+  background: #fffbeb;
+}
+
+.post-official-btn.is-official {
+  color: #d97706;
+  background: rgba(245, 158, 11, 0.15);
+}
+
 .post-delete-btn {
   background: transparent;
   border: none;
